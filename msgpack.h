@@ -3,7 +3,9 @@
 #include <cstdint>
 #include <limits>
 #include <utility>
+#include <type_traits>
 #include <string_view>
+#include <vector>
 #include <endian.h>
 
 namespace msgpackcpp
@@ -230,5 +232,71 @@ namespace msgpackcpp
             out((const char*)&size32, 4);
         }
         out(v.data(), v.size());
+    }
+    
+    template<class Stream>
+    inline void serialize_bin_array(Stream&& out, const char* data, const size_t len)
+    {
+        if (len < 256)
+        {
+            const uint8_t format = 0xc4;
+            const uint8_t size8  = static_cast<uint8_t>(len);
+            out((const char*)&format, 1);
+            out((const char*)&size8, 1);
+        }
+        else if (len < 65536)
+        {
+            const uint8_t  format = 0xc5;
+            const uint16_t size16 = htobe16(static_cast<uint16_t>(len));
+            out((const char*)&format, 1);
+            out((const char*)&size16, 2);
+        }
+        else 
+        {
+            const uint8_t  format = 0xc6;
+            const uint32_t size32 = htobe32(static_cast<uint32_t>(len));
+            out((const char*)&format, 1);
+            out((const char*)&size32, 4);
+        }
+        out(data, len);
+    }
+
+    template<class Stream, class Alloc>
+    inline void serialize(Stream&& out, const std::vector<char, Alloc>& v)
+    {
+        serialize_bin_array(std::forward<Stream>(out), (const char*)v.data(), v.size());
+    }
+
+    template<class Stream, class Alloc>
+    inline void serialize(Stream&& out, const std::vector<uint8_t, Alloc>& v)
+    {
+        serialize_bin_array(std::forward<Stream>(out), (const char*)v.data(), v.size());
+    }
+
+    template<class Stream, class T, class Alloc>
+    inline void serialize(Stream&& out, const std::vector<T, Alloc>& v)
+    {
+        if (v.size() < 16)
+        {
+            const uint8_t format = 0x90 | static_cast<uint8_t>(v.size());
+            out((const char*)&format, 1);
+        }
+        else if (v.size() < 65536)
+        {
+            const uint8_t  format = 0xdc;
+            const uint16_t size16 = htobe16(static_cast<uint16_t>(v.size()));
+            out((const char*)&format, 1);
+            out((const char*)&size16, 2);
+        }
+        else 
+        {
+            const uint8_t  format = 0xdd;
+            const uint32_t size32 = htobe32(static_cast<uint32_t>(v.size()));
+            out((const char*)&format, 1);
+            out((const char*)&size32, 4);
+        }
+        
+        for (const auto& x : v)
+            serialize(std::forward<Stream>(out), x);
     }
 }
