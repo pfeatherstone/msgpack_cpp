@@ -235,6 +235,12 @@ namespace msgpackcpp
         }
         out(v.data(), v.size());
     }
+
+    template<class Stream>
+    inline void serialize(Stream&& out, const char* c_str)
+    {
+        serialize(std::forward<Stream>(out), std::string_view(c_str));
+    }
     
     template<class Stream>
     inline void serialize_bin_array(Stream&& out, const char* data, const size_t len)

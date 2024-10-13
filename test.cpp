@@ -265,5 +265,31 @@ TEST_SUITE("[MSGPACK]")
         }
 
         REQUIRE(num_errors(buf1, buf2) == 0);
+
+        buf1.clear();
+        buf2.clear();
+
+        {
+            // using msgpack-c library
+            vector_sink sink{buf1};
+            msgpack::packer pack{&sink};
+            pack.pack_map(4);
+            pack.pack("my_int");
+            pack.pack(str.my_int);
+            pack.pack("my_float");
+            pack.pack(str.my_float);
+            pack.pack("my_str");
+            pack.pack(str.my_str);
+            pack.pack("my_vec");
+            pack.pack(str.my_vec);
+        }
+
+        {
+            // using custom library
+            using namespace msgpackcpp;
+            serialize(sink(buf2), str, true);
+        }
+
+        REQUIRE(num_errors(buf1, buf2) == 0);
     }
 }
