@@ -273,29 +273,34 @@ namespace msgpackcpp
         serialize_bin_array(std::forward<Stream>(out), (const char*)v.data(), v.size());
     }
 
-    template<class Stream, class T, class Alloc>
-    inline void serialize(Stream&& out, const std::vector<T, Alloc>& v)
+    template<class Stream>
+    inline void serialize_array_size(Stream&& out, uint32_t size)
     {
-        if (v.size() < 16)
+        if (size < 16)
         {
-            const uint8_t format = 0x90 | static_cast<uint8_t>(v.size());
+            const uint8_t format = 0x90 | static_cast<uint8_t>(size);
             out((const char*)&format, 1);
         }
-        else if (v.size() < 65536)
+        else if (size < 65536)
         {
             const uint8_t  format = 0xdc;
-            const uint16_t size16 = htobe16(static_cast<uint16_t>(v.size()));
+            const uint16_t size16 = htobe16(static_cast<uint16_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size16, 2);
         }
         else 
         {
             const uint8_t  format = 0xdd;
-            const uint32_t size32 = htobe32(static_cast<uint32_t>(v.size()));
+            const uint32_t size32 = htobe32(static_cast<uint32_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size32, 4);
         }
-        
+    }
+
+    template<class Stream, class T, class Alloc>
+    inline void serialize(Stream&& out, const std::vector<T, Alloc>& v)
+    { 
+        serialize_array_size(std::forward<Stream>(out), v.size());
         for (const auto& x : v)
             serialize(std::forward<Stream>(out), x);
     }
