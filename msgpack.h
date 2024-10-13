@@ -129,7 +129,7 @@ namespace msgpackcpp
                 constexpr uint8_t format = 0xd2;
                 out((const char*)&format, 1);
                 v = htobe32(v);
-                out((const char*)&v, 4); // Casting to a byte array is the same as writing out as big-endian
+                out((const char*)&v, 4);
             }
         }
     }
@@ -146,7 +146,7 @@ namespace msgpackcpp
             constexpr uint8_t format = 0xcf;
             out((const char*)&format, 1);
             v = htobe64(v);
-            out((const char*)&v, 8); // Casting to a byte array is the same as writing out as big-endian
+            out((const char*)&v, 8);
         }
     }
 
@@ -172,14 +172,30 @@ namespace msgpackcpp
                 constexpr uint8_t format = 0xd3;
                 out((const char*)&format, 1);
                 v = htobe64(v);
-                out((const char*)&v, 8); // Casting to a byte array is the same as writing out as big-endian
+                out((const char*)&v, 8);
             }
         }
     }
 
-    // template<class Stream>
-    // inline void serialize(Stream&& out, float v)
-    // {
-        
-    // }
+    template<class Stream>
+    inline void serialize(Stream&& out, float v)
+    {
+        constexpr uint8_t format = 0xca;
+        out((const char*)&format, 1);
+        uint32_t tmp{};
+        memcpy(&tmp, &v, 4);
+        tmp = htobe32(tmp);
+        out((const char*)&tmp, 4);
+    }
+
+    template<class Stream>
+    inline void serialize(Stream&& out, double v)
+    {
+        constexpr uint8_t format = 0xcb;
+        out((const char*)&format, 1);
+        uint64_t tmp{};
+        memcpy(&tmp, &v, 8);
+        tmp = htobe64(tmp);
+        out((const char*)&tmp, 8);
+    }
 }

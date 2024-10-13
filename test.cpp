@@ -42,6 +42,12 @@ Int random_int(Generator& gen)
     return std::uniform_int_distribution<Int>{std::numeric_limits<Int>::min(), std::numeric_limits<Int>::max()}(gen);
 }
 
+template<class Float, class Generator>
+Float random_float(Generator& gen)
+{
+    return std::uniform_real_distribution<Float>{std::numeric_limits<Float>::min(), std::numeric_limits<Float>::max()}(gen);
+}
+
 TEST_SUITE("[MSGPACK]")
 {
     TEST_CASE("arithmetic types")
@@ -60,6 +66,8 @@ TEST_SUITE("[MSGPACK]")
             const int32_t  f = random_int<int32_t>(eng);
             const uint64_t g = random_int<uint64_t>(eng);
             const int64_t  h = random_int<int64_t>(eng);
+            const float    i = random_float<float>(eng);
+            const double   j = random_float<double>(eng);
 
             {
                 // using msgpack-c library
@@ -73,6 +81,8 @@ TEST_SUITE("[MSGPACK]")
                 pack.pack(f);
                 pack.pack(g);
                 pack.pack(h);
+                pack.pack(i);
+                pack.pack(j);
             }
 
             {
@@ -86,6 +96,8 @@ TEST_SUITE("[MSGPACK]")
                 msgpackcpp::serialize(sink, f);
                 msgpackcpp::serialize(sink, g);
                 msgpackcpp::serialize(sink, h);
+                msgpackcpp::serialize(sink, i);
+                msgpackcpp::serialize(sink, j);
             }
 
             REQUIRE(num_errors(buf1, buf2) == 0);
