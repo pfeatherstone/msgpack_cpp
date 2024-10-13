@@ -20,11 +20,6 @@ struct vector_sink
     {
         buf.insert(end(buf), data, data + len);
     }
-
-    void operator()(const char* data, size_t len)
-    {
-        write(data, len);
-    }
 };
 
 const auto num_errors = [](const auto& buf1, const auto& buf2)
@@ -192,6 +187,33 @@ TEST_SUITE("[MSGPACK]")
             serialize(sink(buf2), v);
             serialize(sink(buf2), w);
             serialize(sink(buf2), x);
+        }
+
+        REQUIRE(num_errors(buf1, buf2) == 0);
+    }
+
+    TEST_CASE("map")
+    {
+        std::mt19937 eng(std::random_device{}());
+        
+        std::map<std::string, int> a;
+        a["a"] = 1;
+        a["b"] = 2;
+        a["c"] = 70000;
+        a["d"] = 1000000000;
+
+        std::vector<uint8_t> buf1, buf2;
+
+        {
+            // using msgpack-c library
+            vector_sink sink{buf1};
+            msgpack::pack(sink, a);
+        }
+
+        {
+            // using custom library
+            using namespace msgpackcpp;
+            serialize(sink(buf2), a);
         }
 
         REQUIRE(num_errors(buf1, buf2) == 0);
