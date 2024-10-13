@@ -32,6 +32,8 @@ FetchContent_MakeAvailable(Boost msgpack doctest)
 # Unit test
 add_executable(Test test.cpp)
 target_compile_features(Test PRIVATE cxx_std_20)
-target_link_libraries(Test PRIVATE msgpack-cxx)
+target_compile_options(Test PRIVATE -Wall -Wextra)
 target_include_directories(Test PRIVATE ${doctest_SOURCE_DIR}/doctest)
-target_compile_options(Test PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(Test 
+  PRIVATE Boost::describe
+  PRIVATE msgpack-cxx)

@@ -6,8 +6,10 @@
 #include <algorithm>
 #include <msgpack.hpp>
 #include <doctest.h>
+#include <boost/describe/class.hpp>
 #include "msgpack.h"
 #include "msgpack_sinks.h"
+#include "msgpack_describe.h"
 
 template<class Byte, class Allocator>
 struct vector_sink
@@ -45,6 +47,21 @@ Float random_float(Generator& gen)
 {
     return std::uniform_real_distribution<Float>{std::numeric_limits<Float>::min(), std::numeric_limits<Float>::max()}(gen);
 }
+
+struct custom_struct
+{
+    int64_t             my_int{};
+    double              my_float{};
+    std::string         my_str;
+    std::vector<float>  my_vec;
+};
+
+BOOST_DESCRIBE_STRUCT(custom_struct, (), (
+    my_int,
+    my_float,
+    my_str,
+    my_vec
+))
 
 TEST_SUITE("[MSGPACK]")
 {
@@ -195,14 +212,13 @@ TEST_SUITE("[MSGPACK]")
     TEST_CASE("map")
     {
         std::mt19937 eng(std::random_device{}());
-        
+        std::vector<uint8_t> buf1, buf2;
+
         std::map<std::string, int> a;
         a["a"] = 1;
         a["b"] = 2;
         a["c"] = 70000;
         a["d"] = 1000000000;
-
-        std::vector<uint8_t> buf1, buf2;
 
         {
             // using msgpack-c library
@@ -214,6 +230,38 @@ TEST_SUITE("[MSGPACK]")
             // using custom library
             using namespace msgpackcpp;
             serialize(sink(buf2), a);
+        }
+
+        REQUIRE(num_errors(buf1, buf2) == 0);
+    }
+
+    TEST_CASE("custom struct")
+    {
+        std::mt19937 eng(std::random_device{}());
+        std::vector<uint8_t> buf1, buf2;
+
+        custom_struct str;
+        str.my_int      = random_int<int64_t>(eng);
+        str.my_float    = random_float<float>(eng);
+        str.my_str      = "Hello there!";
+        str.my_vec.resize(1024);
+        std::generate(begin(str.my_vec), end(str.my_vec), [&]{return random_float<float>(eng);});
+
+        {
+            // using msgpack-c library
+            vector_sink sink{buf1};
+            msgpack::packer pack{&sink};
+            pack.pack_array(4);
+            pack.pack(str.my_int);
+            pack.pack(str.my_float);
+            pack.pack(str.my_str);
+            pack.pack(str.my_vec);
+        }
+
+        {
+            // using custom library
+            using namespace msgpackcpp;
+            serialize(sink(buf2), str);
         }
 
         REQUIRE(num_errors(buf1, buf2) == 0);
