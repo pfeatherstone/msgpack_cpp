@@ -2,6 +2,8 @@
 #include <random>
 #include <vector>
 #include <limits>
+#include <string>
+#include <algorithm>
 #include <msgpack.hpp>
 #include <doctest.h>
 #include "msgpack.h"
@@ -50,7 +52,7 @@ Float random_float(Generator& gen)
 
 TEST_SUITE("[MSGPACK]")
 {
-    TEST_CASE("arithmetic types")
+    TEST_CASE("basic types")
     {
         std::mt19937 eng(std::random_device{}());
 
@@ -58,16 +60,38 @@ TEST_SUITE("[MSGPACK]")
 
         for (int repeat = 0 ; repeat < 1000 ; ++repeat)
         {
-            const uint8_t  a = random_int<uint8_t>(eng);
-            const int8_t   b = random_int<int8_t>(eng);
-            const uint16_t c = random_int<uint16_t>(eng);
-            const int16_t  d = random_int<int16_t>(eng);
-            const uint32_t e = random_int<uint32_t>(eng);
-            const int32_t  f = random_int<int32_t>(eng);
-            const uint64_t g = random_int<uint64_t>(eng);
-            const int64_t  h = random_int<int64_t>(eng);
-            const float    i = random_float<float>(eng);
-            const double   j = random_float<double>(eng);
+            const uint8_t       a = random_int<uint8_t>(eng);
+            const int8_t        b = random_int<int8_t>(eng);
+            const uint16_t      c = random_int<uint16_t>(eng);
+            const int16_t       d = random_int<int16_t>(eng);
+            const uint32_t      e = random_int<uint32_t>(eng);
+            const int32_t       f = random_int<int32_t>(eng);
+            const uint64_t      g = random_int<uint64_t>(eng);
+            const int64_t       h = random_int<int64_t>(eng);
+            const float         i = random_float<float>(eng);
+            const double        j = random_float<double>(eng);
+            const std::string   k = "hello there!";
+            const std::string   l = "Hi there, this string is designed to be greater than 32 bytes long";
+            const std::string   m = "He sighed, and took up the volume again, and tried to forget. He read"
+                                    "of the swallows that fly in and out of the little _café_ at Smyrna"
+                                    "where the Hadjis sit counting their amber beads and the turbaned"
+                                    "merchants smoke their long tasselled pipes";
+            const std::string   n = "and talk gravely to each"
+                                    "other; he read of the Obelisk in the Place de la Concorde that weeps"
+                                    "tears of granite in its lonely sunless exile and longs to be back by"
+                                    "the hot, lotus-covered Nile, where there are Sphinxes, and rose-red"
+                                    "ibises, and white vultures with gilded claws, and crocodiles with small"
+                                    "beryl eyes that crawl over the green steaming mud; he began to brood"
+                                    "over those verses which, drawing music from kiss-stained marble, tell"
+                                    "of that curious statue that Gautier compares to a contralto voice, the"
+                                    "_monstre charmant_ that couches in the porphyry-room of the Louvre."
+                                    "But after a time the book fell from his hand. He grew nervous, and a"
+                                    "horrible fit of terror came over him. What if Alan Campbell should be"
+                                    "out of England? Days would elapse before he could come back. Perhaps he"
+                                    "might refuse to come. What could he do then? Every moment was of vital"
+                                    "importance.";
+            std::string o(70000, 0);
+            std::generate(begin(o), end(o), [&]{return std::uniform_int_distribution<char>{}(eng);});
 
             {
                 // using msgpack-c library
@@ -83,6 +107,11 @@ TEST_SUITE("[MSGPACK]")
                 pack.pack(h);
                 pack.pack(i);
                 pack.pack(j);
+                pack.pack(k);
+                pack.pack(l);
+                pack.pack(m);
+                pack.pack(n);
+                pack.pack(o);
             }
 
             {
@@ -98,6 +127,11 @@ TEST_SUITE("[MSGPACK]")
                 msgpackcpp::serialize(sink, h);
                 msgpackcpp::serialize(sink, i);
                 msgpackcpp::serialize(sink, j);
+                msgpackcpp::serialize(sink, k);
+                msgpackcpp::serialize(sink, l);
+                msgpackcpp::serialize(sink, m);
+                msgpackcpp::serialize(sink, n);
+                msgpackcpp::serialize(sink, o);
             }
 
             REQUIRE(num_errors(buf1, buf2) == 0);

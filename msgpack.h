@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <limits>
 #include <utility>
+#include <string_view>
 #include <endian.h>
 
 namespace msgpackcpp
@@ -197,5 +198,37 @@ namespace msgpackcpp
         memcpy(&tmp, &v, 8);
         tmp = htobe64(tmp);
         out((const char*)&tmp, 8);
+    }
+
+    template<class Stream>
+    inline void serialize(Stream&& out, std::string_view v)
+    {
+        if (v.size() < 32)
+        {
+            const uint8_t format = 0xa0 | static_cast<uint8_t>(v.size());
+            out((const char*)&format, 1);
+        }
+        else if (v.size() < 256)
+        {
+            const uint8_t format = 0xd9;
+            const uint8_t size8  = static_cast<uint8_t>(v.size());
+            out((const char*)&format, 1);
+            out((const char*)&size8, 1);
+        }
+        else if (v.size() < 65536)
+        {
+            const uint8_t  format = 0xda;
+            const uint16_t size16 = htobe16(static_cast<uint16_t>(v.size()));
+            out((const char*)&format, 1);
+            out((const char*)&size16, 2);
+        }
+        else 
+        {
+            const uint8_t  format = 0xdb;
+            const uint32_t size32 = htobe32(static_cast<uint32_t>(v.size()));
+            out((const char*)&format, 1);
+            out((const char*)&size32, 4);
+        }
+        out(v.data(), v.size());
     }
 }
