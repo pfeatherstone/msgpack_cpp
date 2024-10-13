@@ -7,6 +7,7 @@
 #include <msgpack.hpp>
 #include <doctest.h>
 #include "msgpack.h"
+#include "msgpack_sinks.h"
 
 template<class Byte, class Allocator>
 struct vector_sink
@@ -88,17 +89,17 @@ TEST_SUITE("[MSGPACK]")
 
             {
                 // using custom library
-                vector_sink sink{buf2};
-                msgpackcpp::serialize(sink, a);
-                msgpackcpp::serialize(sink, b);
-                msgpackcpp::serialize(sink, c);
-                msgpackcpp::serialize(sink, d);
-                msgpackcpp::serialize(sink, e);
-                msgpackcpp::serialize(sink, f);
-                msgpackcpp::serialize(sink, g);
-                msgpackcpp::serialize(sink, h);
-                msgpackcpp::serialize(sink, i);
-                msgpackcpp::serialize(sink, j);
+                using namespace msgpackcpp;
+                serialize(sink(buf2), a);
+                serialize(sink(buf2), b);
+                serialize(sink(buf2), c);
+                serialize(sink(buf2), d);
+                serialize(sink(buf2), e);
+                serialize(sink(buf2), f);
+                serialize(sink(buf2), g);
+                serialize(sink(buf2), h);
+                serialize(sink(buf2), i);
+                serialize(sink(buf2), j);
             }
 
             REQUIRE(num_errors(buf1, buf2) == 0);
@@ -176,21 +177,21 @@ TEST_SUITE("[MSGPACK]")
 
         {
             // using custom library
-            vector_sink sink{buf2};
-            msgpackcpp::serialize(sink, k);
-            msgpackcpp::serialize(sink, l);
-            msgpackcpp::serialize(sink, m);
-            msgpackcpp::serialize(sink, n);
-            msgpackcpp::serialize(sink, o);
-            msgpackcpp::serialize(sink, p);
-            msgpackcpp::serialize(sink, q);
-            msgpackcpp::serialize(sink, r);
-            msgpackcpp::serialize(sink, s);
-            msgpackcpp::serialize(sink, t);
-            msgpackcpp::serialize(sink, u);
-            msgpackcpp::serialize(sink, v);
-            msgpackcpp::serialize(sink, w);
-            msgpackcpp::serialize(sink, x);
+            using namespace msgpackcpp;
+            serialize(sink(buf2), k);
+            serialize(sink(buf2), l);
+            serialize(sink(buf2), m);
+            serialize(sink(buf2), n);
+            serialize(sink(buf2), o);
+            serialize(sink(buf2), p);
+            serialize(sink(buf2), q);
+            serialize(sink(buf2), r);
+            serialize(sink(buf2), s);
+            serialize(sink(buf2), t);
+            serialize(sink(buf2), u);
+            serialize(sink(buf2), v);
+            serialize(sink(buf2), w);
+            serialize(sink(buf2), x);
         }
 
         REQUIRE(num_errors(buf1, buf2) == 0);

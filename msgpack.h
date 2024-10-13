@@ -6,6 +6,8 @@
 #include <type_traits>
 #include <string_view>
 #include <vector>
+#include <map>
+#include <unordered_map>
 #include <endian.h>
 
 namespace msgpackcpp
@@ -35,6 +37,54 @@ namespace msgpackcpp
     }
 
     template<class Stream>
+    inline void serialize(Stream&& out, uint16_t v)
+    {
+        if (v <= std::numeric_limits<uint8_t>::max())
+        {
+            serialize(std::forward<Stream>(out), (uint8_t)v);
+        }
+        else
+        {
+            constexpr uint8_t format = 0xcd;
+            v = htobe16(v);
+            out((const char*)&format, 1);
+            out((const char*)&v, 2);
+        }
+    }
+
+    template<class Stream>
+    inline void serialize(Stream&& out, uint32_t v)
+    {
+        if (v <= std::numeric_limits<uint16_t>::max())
+        {
+            serialize(std::forward<Stream>(out), (uint16_t)v);
+        }
+        else
+        {
+            constexpr uint8_t format = 0xce;
+            out((const char*)&format, 1);
+            v = htobe32(v);
+            out((const char*)&v, 4);
+        }
+    }
+
+    template<class Stream>
+    inline void serialize(Stream&& out, uint64_t v)
+    {
+        if (v <= std::numeric_limits<uint32_t>::max())
+        {
+            serialize(std::forward<Stream>(out), (uint32_t)v);
+        }
+        else
+        {
+            constexpr uint8_t format = 0xcf;
+            out((const char*)&format, 1);
+            v = htobe64(v);
+            out((const char*)&v, 8);
+        }
+    }
+
+    template<class Stream>
     inline void serialize(Stream&& out, int8_t v)
     {
         if (v < -(1<<5))
@@ -48,22 +98,6 @@ namespace msgpackcpp
         {
             // negative fixing (5-bit negative integer)
             out((const char*)&v, 1);
-        }
-    }
-
-    template<class Stream>
-    inline void serialize(Stream&& out, uint16_t v)
-    {
-        if (v <= std::numeric_limits<uint8_t>::max())
-        {
-            serialize(std::forward<Stream>(out), (uint8_t)v);
-        }
-        else
-        {
-            constexpr uint8_t format = 0xcd;;
-            out((const char*)&format, 1);
-            v = htobe16(v);
-            out((const char*)&v, 2);
         }
     }
 
@@ -95,22 +129,6 @@ namespace msgpackcpp
     }
 
     template<class Stream>
-    inline void serialize(Stream&& out, uint32_t v)
-    {
-        if (v <= std::numeric_limits<uint16_t>::max())
-        {
-            serialize(std::forward<Stream>(out), (uint16_t)v);
-        }
-        else
-        {
-            constexpr uint8_t format = 0xce;
-            out((const char*)&format, 1);
-            v = htobe32(v);
-            out((const char*)&v, 4);
-        }
-    }
-
-    template<class Stream>
     inline void serialize(Stream&& out, int32_t v)
     {
         // Positive
@@ -134,22 +152,6 @@ namespace msgpackcpp
                 v = htobe32(v);
                 out((const char*)&v, 4);
             }
-        }
-    }
-
-    template<class Stream>
-    inline void serialize(Stream&& out, uint64_t v)
-    {
-        if (v <= std::numeric_limits<uint32_t>::max())
-        {
-            serialize(std::forward<Stream>(out), (uint32_t)v);
-        }
-        else
-        {
-            constexpr uint8_t format = 0xcf;
-            out((const char*)&format, 1);
-            v = htobe64(v);
-            out((const char*)&v, 8);
         }
     }
 
@@ -303,5 +305,66 @@ namespace msgpackcpp
         serialize_array_size(std::forward<Stream>(out), v.size());
         for (const auto& x : v)
             serialize(std::forward<Stream>(out), x);
+    }
+
+    template<class Stream>
+    inline void serialize_map_size(Stream&& out, uint32_t size)
+    {
+        if (size < 16)
+        {
+            const uint8_t format = 0x80 | static_cast<uint8_t>(size);
+            out((const char*)&format, 1);
+        }
+        else if (size < 65536)
+        {
+            const uint8_t  format = 0xde;
+            const uint16_t size16 = htobe16(static_cast<uint16_t>(size));
+            out((const char*)&format, 1);
+            out((const char*)&size16, 2);
+        }
+        else 
+        {
+            const uint8_t  format = 0xdf;
+            const uint32_t size32 = htobe32(static_cast<uint32_t>(size));
+            out((const char*)&format, 1);
+            out((const char*)&size32, 4);
+        }
+    }
+
+    template <
+        class Stream, 
+        class K, 
+        class V, 
+        class Compare = std::less<K>,
+        class Alloc = std::allocator<std::pair<const K, V>>
+    >
+    inline void serialize(Stream&& out, const std::map<K,V,Compare,Alloc>& map)
+    {
+        serialize_map_size(std::forward<Stream>(out), map.size());
+        
+        for (const auto& [k,v] : map)
+        {
+            serialize(std::forward<Stream>(out), k);
+            serialize(std::forward<Stream>(out), v);
+        }
+    }
+
+    template <
+        class Stream, 
+        class K,
+        class V,
+        class Hash      = std::hash<K>,
+        class KeyEqual  = std::equal_to<K>,
+        class Alloc     = std::allocator<std::pair<const K, V>>
+    >
+    inline void serialize(Stream&& out, const std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map)
+    {
+        serialize_map_size(std::forward<Stream>(out), map.size());
+        
+        for (const auto& [k,v] : map)
+        {
+            serialize(std::forward<Stream>(out), k);
+            serialize(std::forward<Stream>(out), v);
+        }
     }
 }
