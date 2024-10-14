@@ -8,6 +8,7 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <cstring>
 #include <endian.h>
 
 namespace msgpackcpp
@@ -104,81 +105,69 @@ namespace msgpackcpp
     template<class Stream>
     inline void serialize(Stream&& out, int16_t v)
     {
-        // Positive
         if (v >= 0)
         {
-            // uint16_t
+            // Positive - fits in uint16
             serialize(std::forward<Stream>(out), (uint16_t)v);
         }
-        // negative
+        else if (v >= std::numeric_limits<int8_t>::min())
+        {
+            // negative - fits in int8
+            serialize(std::forward<Stream>(out), (int8_t)v);
+        }
         else
         {
-            if (v >= std::numeric_limits<int8_t>::min())
-            {
-                // int8_t
-                serialize(std::forward<Stream>(out), (int8_t)v);
-            }
-            else
-            {
-                constexpr uint8_t format = 0xd1;
-                out((const char*)&format, 1);
-                v = htobe16(v);
-                out((const char*)&v, 2);
-            }
+            // negative - int16
+            constexpr uint8_t format = 0xd1;
+            out((const char*)&format, 1);
+            v = htobe16(v);
+            out((const char*)&v, 2);
         }
     }
 
     template<class Stream>
     inline void serialize(Stream&& out, int32_t v)
     {
-        // Positive
         if (v >= 0)
         {
-            // uint32_t
+            // Positive - fits in uint32_t
             serialize(std::forward<Stream>(out), (uint32_t)v);
         }
-        // negative
+        else  if (v >= std::numeric_limits<int16_t>::min())
+        {
+            // negative - fits in int16_t
+            serialize(std::forward<Stream>(out), (int16_t)v);
+        }
         else
         {
-            if (v >= std::numeric_limits<int16_t>::min())
-            {
-                // int16_t
-                serialize(std::forward<Stream>(out), (int16_t)v);
-            }
-            else
-            {
-                constexpr uint8_t format = 0xd2;
-                out((const char*)&format, 1);
-                v = htobe32(v);
-                out((const char*)&v, 4);
-            }
+            // negative - in32_t
+            constexpr uint8_t format = 0xd2;
+            out((const char*)&format, 1);
+            v = htobe32(v);
+            out((const char*)&v, 4);
         }
     }
 
     template<class Stream>
     inline void serialize(Stream&& out, int64_t v)
     {
-        // Positive
         if (v >= 0)
         {
-            // uint64_t
+            // Positive - fits in uint64_t
             serialize(std::forward<Stream>(out), (uint64_t)v);
         }
-        // negative
+        else if (v >= std::numeric_limits<int32_t>::min())
+        {
+            // negative - fits in int32_t
+            serialize(std::forward<Stream>(out), (int32_t)v);
+        }
         else
         {
-            if (v >= std::numeric_limits<int32_t>::min())
-            {
-                // int32_t
-                serialize(std::forward<Stream>(out), (int32_t)v);
-            }
-            else
-            {
-                constexpr uint8_t format = 0xd3;
-                out((const char*)&format, 1);
-                v = htobe64(v);
-                out((const char*)&v, 8);
-            }
+            // negative - int64_t
+            constexpr uint8_t format = 0xd3;
+            out((const char*)&format, 1);
+            v = htobe64(v);
+            out((const char*)&v, 8);
         }
     }
 
@@ -186,10 +175,10 @@ namespace msgpackcpp
     inline void serialize(Stream&& out, float v)
     {
         constexpr uint8_t format = 0xca;
-        out((const char*)&format, 1);
         uint32_t tmp{};
-        memcpy(&tmp, &v, 4);
+        std::memcpy(&tmp, &v, 4);
         tmp = htobe32(tmp);
+        out((const char*)&format, 1);
         out((const char*)&tmp, 4);
     }
 
@@ -197,10 +186,10 @@ namespace msgpackcpp
     inline void serialize(Stream&& out, double v)
     {
         constexpr uint8_t format = 0xcb;
-        out((const char*)&format, 1);
         uint64_t tmp{};
-        memcpy(&tmp, &v, 8);
+        std::memcpy(&tmp, &v, 8);
         tmp = htobe64(tmp);
+        out((const char*)&format, 1);
         out((const char*)&tmp, 8);
     }
 
@@ -214,22 +203,22 @@ namespace msgpackcpp
         }
         else if (v.size() < 256)
         {
-            const uint8_t format = 0xd9;
-            const uint8_t size8  = static_cast<uint8_t>(v.size());
+            constexpr uint8_t format = 0xd9;
+            const     uint8_t size8  = static_cast<uint8_t>(v.size());
             out((const char*)&format, 1);
             out((const char*)&size8, 1);
         }
         else if (v.size() < 65536)
         {
-            const uint8_t  format = 0xda;
-            const uint16_t size16 = htobe16(static_cast<uint16_t>(v.size()));
+            constexpr uint8_t  format = 0xda;
+            const     uint16_t size16 = htobe16(static_cast<uint16_t>(v.size()));
             out((const char*)&format, 1);
             out((const char*)&size16, 2);
         }
         else 
         {
-            const uint8_t  format = 0xdb;
-            const uint32_t size32 = htobe32(static_cast<uint32_t>(v.size()));
+            constexpr uint8_t  format = 0xdb;
+            const     uint32_t size32 = htobe32(static_cast<uint32_t>(v.size()));
             out((const char*)&format, 1);
             out((const char*)&size32, 4);
         }
@@ -247,22 +236,22 @@ namespace msgpackcpp
     {
         if (len < 256)
         {
-            const uint8_t format = 0xc4;
-            const uint8_t size8  = static_cast<uint8_t>(len);
+            constexpr uint8_t format = 0xc4;
+            const     uint8_t size8  = static_cast<uint8_t>(len);
             out((const char*)&format, 1);
             out((const char*)&size8, 1);
         }
         else if (len < 65536)
         {
-            const uint8_t  format = 0xc5;
-            const uint16_t size16 = htobe16(static_cast<uint16_t>(len));
+            constexpr uint8_t  format = 0xc5;
+            const     uint16_t size16 = htobe16(static_cast<uint16_t>(len));
             out((const char*)&format, 1);
             out((const char*)&size16, 2);
         }
         else 
         {
-            const uint8_t  format = 0xc6;
-            const uint32_t size32 = htobe32(static_cast<uint32_t>(len));
+            constexpr uint8_t  format = 0xc6;
+            const     uint32_t size32 = htobe32(static_cast<uint32_t>(len));
             out((const char*)&format, 1);
             out((const char*)&size32, 4);
         }
@@ -291,15 +280,15 @@ namespace msgpackcpp
         }
         else if (size < 65536)
         {
-            const uint8_t  format = 0xdc;
-            const uint16_t size16 = htobe16(static_cast<uint16_t>(size));
+            constexpr uint8_t  format = 0xdc;
+            const     uint16_t size16 = htobe16(static_cast<uint16_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size16, 2);
         }
         else 
         {
-            const uint8_t  format = 0xdd;
-            const uint32_t size32 = htobe32(static_cast<uint32_t>(size));
+            constexpr uint8_t  format = 0xdd;
+            const     uint32_t size32 = htobe32(static_cast<uint32_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size32, 4);
         }
@@ -323,15 +312,15 @@ namespace msgpackcpp
         }
         else if (size < 65536)
         {
-            const uint8_t  format = 0xde;
-            const uint16_t size16 = htobe16(static_cast<uint16_t>(size));
+            constexpr uint8_t  format = 0xde;
+            const     uint16_t size16 = htobe16(static_cast<uint16_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size16, 2);
         }
         else 
         {
-            const uint8_t  format = 0xdf;
-            const uint32_t size32 = htobe32(static_cast<uint32_t>(size));
+            constexpr uint8_t  format = 0xdf;
+            const     uint32_t size32 = htobe32(static_cast<uint32_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size32, 4);
         }
