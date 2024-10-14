@@ -1,12 +1,12 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#define BOOST_TEST_MODULE Msgpack
 #include <random>
 #include <vector>
 #include <limits>
 #include <string>
 #include <algorithm>
-#include <msgpack.hpp>
-#include <doctest.h>
+#include <boost/test/unit_test.hpp>
 #include <boost/describe/class.hpp>
+#include <msgpack.hpp>
 #include "msgpack.h"
 #include "msgpack_sinks.h"
 #include "msgpack_describe.h"
@@ -63,233 +63,238 @@ BOOST_DESCRIBE_STRUCT(custom_struct, (), (
     my_vec
 ))
 
-TEST_SUITE("[MSGPACK]")
+BOOST_AUTO_TEST_CASE(test_basic_types)
 {
-    TEST_CASE("basic types")
+    std::mt19937 eng(std::random_device{}());
+    std::vector<uint8_t> buf1, buf2;
+
+    for (int repeat = 0 ; repeat < 100000 ; ++repeat)
     {
-        std::mt19937 eng(std::random_device{}());
-        std::vector<uint8_t> buf1, buf2;
-
-        for (int repeat = 0 ; repeat < 100000 ; ++repeat)
-        {
-            const uint8_t       a = random_int<uint8_t>(eng);
-            const int8_t        b = random_int<int8_t>(eng);
-            const uint16_t      c = random_int<uint16_t>(eng);
-            const int16_t       d = random_int<int16_t>(eng);
-            const uint32_t      e = random_int<uint32_t>(eng);
-            const int32_t       f = random_int<int32_t>(eng);
-            const uint64_t      g = random_int<uint64_t>(eng);
-            const int64_t       h = random_int<int64_t>(eng);
-            const float         i = random_float<float>(eng);
-            const double        j = random_float<double>(eng);
-
-            {
-                // using msgpack-c library
-                vector_sink sink{buf1};
-                msgpack::packer pack{&sink};
-                pack.pack(a);
-                pack.pack(b);
-                pack.pack(c);
-                pack.pack(d);
-                pack.pack(e);
-                pack.pack(f);
-                pack.pack(g);
-                pack.pack(h);
-                pack.pack(i);
-                pack.pack(j);
-            }
-
-            {
-                // using custom library
-                using namespace msgpackcpp;
-                serialize(sink(buf2), a);
-                serialize(sink(buf2), b);
-                serialize(sink(buf2), c);
-                serialize(sink(buf2), d);
-                serialize(sink(buf2), e);
-                serialize(sink(buf2), f);
-                serialize(sink(buf2), g);
-                serialize(sink(buf2), h);
-                serialize(sink(buf2), i);
-                serialize(sink(buf2), j);
-            }
-
-            REQUIRE(num_errors(buf1, buf2) == 0);
-            buf1.clear();
-            buf2.clear();
-        }
-    }
-
-    TEST_CASE("string and bin array")
-    {
-        std::mt19937 eng(std::random_device{}());
-        std::vector<uint8_t> buf1, buf2;
-
-        const std::string   k = "hello there!";
-        const std::string   l = "Hi there, this string is designed to be greater than 32 bytes long";
-        const std::string   m = "He sighed, and took up the volume again, and tried to forget. He read"
-                                "of the swallows that fly in and out of the little _café_ at Smyrna"
-                                "where the Hadjis sit counting their amber beads and the turbaned"
-                                "merchants smoke their long tasselled pipes";
-        const std::string   n = "and talk gravely to each"
-                                "other; he read of the Obelisk in the Place de la Concorde that weeps"
-                                "tears of granite in its lonely sunless exile and longs to be back by"
-                                "the hot, lotus-covered Nile, where there are Sphinxes, and rose-red"
-                                "ibises, and white vultures with gilded claws, and crocodiles with small"
-                                "beryl eyes that crawl over the green steaming mud; he began to brood"
-                                "over those verses which, drawing music from kiss-stained marble, tell"
-                                "of that curious statue that Gautier compares to a contralto voice, the"
-                                "_monstre charmant_ that couches in the porphyry-room of the Louvre."
-                                "But after a time the book fell from his hand. He grew nervous, and a"
-                                "horrible fit of terror came over him. What if Alan Campbell should be"
-                                "out of England? Days would elapse before he could come back. Perhaps he"
-                                "might refuse to come. What could he do then? Every moment was of vital"
-                                "importance.";
-        std::string o(70000, 0);
-        std::generate(begin(o), end(o), [&]{return std::uniform_int_distribution<char>{}(eng);});
-
-        std::vector<char>    p(255);
-        std::vector<uint8_t> q(255);
-        std::vector<int8_t>  r(255);
-        std::vector<char>    s(1000);
-        std::vector<uint8_t> t(1000);
-        std::vector<int8_t>  u(1000);
-        std::vector<char>    v(70000);
-        std::vector<uint8_t> w(70000);
-        std::vector<int8_t>  x(70000);
-        std::generate(begin(p), end(p), [&]{return random_int<char>(eng);});
-        std::generate(begin(q), end(q), [&]{return random_int<uint8_t>(eng);});
-        std::generate(begin(r), end(r), [&]{return random_int<int8_t>(eng);});
-        std::generate(begin(s), end(s), [&]{return random_int<char>(eng);});
-        std::generate(begin(t), end(t), [&]{return random_int<uint8_t>(eng);});
-        std::generate(begin(u), end(u), [&]{return random_int<int8_t>(eng);});
-        std::generate(begin(v), end(v), [&]{return random_int<char>(eng);});
-        std::generate(begin(w), end(w), [&]{return random_int<uint8_t>(eng);});
-        std::generate(begin(x), end(x), [&]{return random_int<int8_t>(eng);});
+        const uint8_t       a = random_int<uint8_t>(eng);
+        const int8_t        b = random_int<int8_t>(eng);
+        const uint16_t      c = random_int<uint16_t>(eng);
+        const int16_t       d = random_int<int16_t>(eng);
+        const uint32_t      e = random_int<uint32_t>(eng);
+        const int32_t       f = random_int<int32_t>(eng);
+        const uint64_t      g = random_int<uint64_t>(eng);
+        const int64_t       h = random_int<int64_t>(eng);
+        const float         i = random_float<float>(eng);
+        const double        j = random_float<double>(eng);
 
         {
             // using msgpack-c library
             vector_sink sink{buf1};
             msgpack::packer pack{&sink};
-            pack.pack(k);
-            pack.pack(l);
-            pack.pack(m);
-            pack.pack(n);
-            pack.pack(o);
-            pack.pack(p);
-            pack.pack(q);
-            pack.pack(r);
-            pack.pack(s);
-            pack.pack(t);
-            pack.pack(u);
-            pack.pack(v);
-            pack.pack(w);
-            pack.pack(x);
-        }
-
-        {
-            // using custom library
-            using namespace msgpackcpp;
-            serialize(sink(buf2), k);
-            serialize(sink(buf2), l);
-            serialize(sink(buf2), m);
-            serialize(sink(buf2), n);
-            serialize(sink(buf2), o);
-            serialize(sink(buf2), p);
-            serialize(sink(buf2), q);
-            serialize(sink(buf2), r);
-            serialize(sink(buf2), s);
-            serialize(sink(buf2), t);
-            serialize(sink(buf2), u);
-            serialize(sink(buf2), v);
-            serialize(sink(buf2), w);
-            serialize(sink(buf2), x);
-        }
-
-        REQUIRE(num_errors(buf1, buf2) == 0);
-    }
-
-    TEST_CASE("map")
-    {
-        std::mt19937 eng(std::random_device{}());
-        std::vector<uint8_t> buf1, buf2;
-
-        std::map<std::string, int> a;
-        a["a"] = 1;
-        a["b"] = 2;
-        a["c"] = 70000;
-        a["d"] = 1000000000;
-
-        {
-            // using msgpack-c library
-            vector_sink sink{buf1};
-            msgpack::pack(sink, a);
+            pack.pack(a);
+            pack.pack(b);
+            pack.pack(c);
+            pack.pack(d);
+            pack.pack(e);
+            pack.pack(f);
+            pack.pack(g);
+            pack.pack(h);
+            pack.pack(i);
+            pack.pack(j);
         }
 
         {
             // using custom library
             using namespace msgpackcpp;
             serialize(sink(buf2), a);
+            serialize(sink(buf2), b);
+            serialize(sink(buf2), c);
+            serialize(sink(buf2), d);
+            serialize(sink(buf2), e);
+            serialize(sink(buf2), f);
+            serialize(sink(buf2), g);
+            serialize(sink(buf2), h);
+            serialize(sink(buf2), i);
+            serialize(sink(buf2), j);
         }
 
-        REQUIRE(num_errors(buf1, buf2) == 0);
-    }
-
-    TEST_CASE("custom struct")
-    {
-        std::mt19937 eng(std::random_device{}());
-        std::vector<uint8_t> buf1, buf2;
-
-        custom_struct str;
-        str.my_int      = random_int<int64_t>(eng);
-        str.my_float    = random_float<float>(eng);
-        str.my_str      = "Hello there!";
-        str.my_vec.resize(1024);
-        std::generate(begin(str.my_vec), end(str.my_vec), [&]{return random_float<float>(eng);});
-
-        {
-            // using msgpack-c library
-            vector_sink sink{buf1};
-            msgpack::packer pack{&sink};
-            pack.pack_array(4);
-            pack.pack(str.my_int);
-            pack.pack(str.my_float);
-            pack.pack(str.my_str);
-            pack.pack(str.my_vec);
-        }
-
-        {
-            // using custom library
-            using namespace msgpackcpp;
-            serialize(sink(buf2), str);
-        }
-
-        REQUIRE(num_errors(buf1, buf2) == 0);
-
+        BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
         buf1.clear();
         buf2.clear();
-
-        {
-            // using msgpack-c library
-            vector_sink sink{buf1};
-            msgpack::packer pack{&sink};
-            pack.pack_map(4);
-            pack.pack("my_int");
-            pack.pack(str.my_int);
-            pack.pack("my_float");
-            pack.pack(str.my_float);
-            pack.pack("my_str");
-            pack.pack(str.my_str);
-            pack.pack("my_vec");
-            pack.pack(str.my_vec);
-        }
-
-        {
-            // using custom library
-            using namespace msgpackcpp;
-            serialize(sink(buf2), str, true);
-        }
-
-        REQUIRE(num_errors(buf1, buf2) == 0);
     }
+}
+
+BOOST_AUTO_TEST_CASE(test_string_and_binary_arrays)
+{
+    std::mt19937 eng(std::random_device{}());
+    std::vector<uint8_t> buf1, buf2;
+
+    const std::string   k = "hello there!";
+    const std::string   l = "Hi there, this string is designed to be greater than 32 bytes long";
+    const std::string   m = "He sighed, and took up the volume again, and tried to forget. He read"
+                            "of the swallows that fly in and out of the little _café_ at Smyrna"
+                            "where the Hadjis sit counting their amber beads and the turbaned"
+                            "merchants smoke their long tasselled pipes";
+    const std::string   n = "and talk gravely to each"
+                            "other; he read of the Obelisk in the Place de la Concorde that weeps"
+                            "tears of granite in its lonely sunless exile and longs to be back by"
+                            "the hot, lotus-covered Nile, where there are Sphinxes, and rose-red"
+                            "ibises, and white vultures with gilded claws, and crocodiles with small"
+                            "beryl eyes that crawl over the green steaming mud; he began to brood"
+                            "over those verses which, drawing music from kiss-stained marble, tell"
+                            "of that curious statue that Gautier compares to a contralto voice, the"
+                            "_monstre charmant_ that couches in the porphyry-room of the Louvre."
+                            "But after a time the book fell from his hand. He grew nervous, and a"
+                            "horrible fit of terror came over him. What if Alan Campbell should be"
+                            "out of England? Days would elapse before he could come back. Perhaps he"
+                            "might refuse to come. What could he do then? Every moment was of vital"
+                            "importance.";
+    std::string o(70000, 0);
+    std::generate(begin(o), end(o), [&]{return std::uniform_int_distribution<char>{}(eng);});
+
+    std::vector<char>    p(255);
+    std::vector<uint8_t> q(255);
+    std::vector<int8_t>  r(255);
+    std::vector<char>    s(1000);
+    std::vector<uint8_t> t(1000);
+    std::vector<int8_t>  u(1000);
+    std::vector<char>    v(70000);
+    std::vector<uint8_t> w(70000);
+    std::vector<int8_t>  x(70000);
+    std::generate(begin(p), end(p), [&]{return random_int<char>(eng);});
+    std::generate(begin(q), end(q), [&]{return random_int<uint8_t>(eng);});
+    std::generate(begin(r), end(r), [&]{return random_int<int8_t>(eng);});
+    std::generate(begin(s), end(s), [&]{return random_int<char>(eng);});
+    std::generate(begin(t), end(t), [&]{return random_int<uint8_t>(eng);});
+    std::generate(begin(u), end(u), [&]{return random_int<int8_t>(eng);});
+    std::generate(begin(v), end(v), [&]{return random_int<char>(eng);});
+    std::generate(begin(w), end(w), [&]{return random_int<uint8_t>(eng);});
+    std::generate(begin(x), end(x), [&]{return random_int<int8_t>(eng);});
+
+    {
+        // using msgpack-c library
+        vector_sink sink{buf1};
+        msgpack::packer pack{&sink};
+        pack.pack(k);
+        pack.pack(l);
+        pack.pack(m);
+        pack.pack(n);
+        pack.pack(o);
+        pack.pack(p);
+        pack.pack(q);
+        pack.pack(r);
+        pack.pack(s);
+        pack.pack(t);
+        pack.pack(u);
+        pack.pack(v);
+        pack.pack(w);
+        pack.pack(x);
+    }
+
+    {
+        // using custom library
+        using namespace msgpackcpp;
+        serialize(sink(buf2), k);
+        serialize(sink(buf2), l);
+        serialize(sink(buf2), m);
+        serialize(sink(buf2), n);
+        serialize(sink(buf2), o);
+        serialize(sink(buf2), p);
+        serialize(sink(buf2), q);
+        serialize(sink(buf2), r);
+        serialize(sink(buf2), s);
+        serialize(sink(buf2), t);
+        serialize(sink(buf2), u);
+        serialize(sink(buf2), v);
+        serialize(sink(buf2), w);
+        serialize(sink(buf2), x);
+    }
+
+    BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
+}
+
+BOOST_AUTO_TEST_CASE(test_maps)
+{
+    std::mt19937 eng(std::random_device{}());
+    std::vector<uint8_t> buf1, buf2;
+
+    std::map<std::string, int> a;
+    a["a"] = 1;
+    a["b"] = 2;
+    a["c"] = 70000;
+    a["d"] = 1000000000;
+
+    std::unordered_map<uint64_t, std::string> b;
+    b[1]                = "small int";
+    b[257]              = "medium int";
+    b[70000]            = "big int";
+    b[5000000000ull]    = "very big int";
+
+    {
+        // using msgpack-c library
+        vector_sink sink{buf1};
+        msgpack::pack(sink, a);
+        msgpack::pack(sink, b);
+    }
+
+    {
+        // using custom library
+        using namespace msgpackcpp;
+        serialize(sink(buf2), a);
+        serialize(sink(buf2), b);
+    }
+
+    BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
+}
+
+BOOST_AUTO_TEST_CASE(test_custom_struct)
+{
+    std::mt19937 eng(std::random_device{}());
+    std::vector<uint8_t> buf1, buf2;
+
+    custom_struct str;
+    str.my_int      = random_int<int64_t>(eng);
+    str.my_float    = random_float<float>(eng);
+    str.my_str      = "Hello there!";
+    str.my_vec.resize(1024);
+    std::generate(begin(str.my_vec), end(str.my_vec), [&]{return random_float<float>(eng);});
+
+    {
+        // using msgpack-c library
+        vector_sink sink{buf1};
+        msgpack::packer pack{&sink};
+        pack.pack_array(4);
+        pack.pack(str.my_int);
+        pack.pack(str.my_float);
+        pack.pack(str.my_str);
+        pack.pack(str.my_vec);
+    }
+
+    {
+        // using custom library
+        using namespace msgpackcpp;
+        serialize(sink(buf2), str);
+    }
+
+    BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
+
+    buf1.clear();
+    buf2.clear();
+
+    {
+        // using msgpack-c library
+        vector_sink sink{buf1};
+        msgpack::packer pack{&sink};
+        pack.pack_map(4);
+        pack.pack("my_int");
+        pack.pack(str.my_int);
+        pack.pack("my_float");
+        pack.pack(str.my_float);
+        pack.pack("my_str");
+        pack.pack(str.my_str);
+        pack.pack("my_vec");
+        pack.pack(str.my_vec);
+    }
+
+    {
+        // using custom library
+        using namespace msgpackcpp;
+        serialize(sink(buf2), str, true);
+    }
+
+    BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
 }
