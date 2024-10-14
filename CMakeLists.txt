@@ -3,9 +3,8 @@ project(Msgpack)
 
 # Dependencies for Unit tests and Bench tests
 include(FetchContent)
-include(ExternalProject)
 
-set(BOOST_INCLUDE_LIBRARIES describe)
+set(BOOST_INCLUDE_LIBRARIES describe test)
 set(BOOST_ENABLE_CMAKE ON)
 FetchContent_Declare(
   Boost
@@ -21,13 +20,7 @@ FetchContent_Declare(
   GIT_TAG        cpp_master
 )
 
-FetchContent_Declare(
-    doctest
-  GIT_REPOSITORY https://github.com/doctest/doctest.git
-  GIT_TAG        v2.4.11
-)
-
-FetchContent_MakeAvailable(Boost msgpack doctest)
+FetchContent_MakeAvailable(Boost msgpack)
 
 # Unit test
 add_executable(Test test.cpp)
@@ -35,5 +28,5 @@ target_compile_features(Test PRIVATE cxx_std_20)
 target_compile_options(Test PRIVATE -Wall -Wextra)
 target_include_directories(Test PRIVATE ${doctest_SOURCE_DIR}/doctest)
 target_link_libraries(Test 
-  PRIVATE Boost::describe
+  PRIVATE Boost::describe Boost::unit_test_framework
   PRIVATE msgpack-cxx)
