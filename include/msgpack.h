@@ -42,7 +42,7 @@ namespace msgpackcpp
     {
         if (v <= std::numeric_limits<uint8_t>::max())
         {
-            serialize(std::forward<Stream>(out), (uint8_t)v);
+            serialize(std::forward<Stream>(out), static_cast<uint8_t>(v));
         }
         else
         {
@@ -58,13 +58,13 @@ namespace msgpackcpp
     {
         if (v <= std::numeric_limits<uint16_t>::max())
         {
-            serialize(std::forward<Stream>(out), (uint16_t)v);
+            serialize(std::forward<Stream>(out), static_cast<uint16_t>(v));
         }
         else
         {
             constexpr uint8_t format = 0xce;
-            out((const char*)&format, 1);
             v = htobe32(v);
+            out((const char*)&format, 1);
             out((const char*)&v, 4);
         }
     }
@@ -74,13 +74,13 @@ namespace msgpackcpp
     {
         if (v <= std::numeric_limits<uint32_t>::max())
         {
-            serialize(std::forward<Stream>(out), (uint32_t)v);
+            serialize(std::forward<Stream>(out), static_cast<uint32_t>(v));
         }
         else
         {
             constexpr uint8_t format = 0xcf;
-            out((const char*)&format, 1);
             v = htobe64(v);
+            out((const char*)&format, 1);
             out((const char*)&v, 8);
         }
     }
@@ -108,19 +108,19 @@ namespace msgpackcpp
         if (v >= 0)
         {
             // Positive - fits in uint16
-            serialize(std::forward<Stream>(out), (uint16_t)v);
+            serialize(std::forward<Stream>(out), static_cast<uint16_t>(v));
         }
         else if (v >= std::numeric_limits<int8_t>::min())
         {
             // negative - fits in int8
-            serialize(std::forward<Stream>(out), (int8_t)v);
+            serialize(std::forward<Stream>(out), static_cast<int8_t>(v));
         }
         else
         {
             // negative - int16
             constexpr uint8_t format = 0xd1;
-            out((const char*)&format, 1);
             v = htobe16(v);
+            out((const char*)&format, 1);
             out((const char*)&v, 2);
         }
     }
@@ -131,19 +131,19 @@ namespace msgpackcpp
         if (v >= 0)
         {
             // Positive - fits in uint32_t
-            serialize(std::forward<Stream>(out), (uint32_t)v);
+            serialize(std::forward<Stream>(out), static_cast<uint32_t>(v));
         }
         else  if (v >= std::numeric_limits<int16_t>::min())
         {
             // negative - fits in int16_t
-            serialize(std::forward<Stream>(out), (int16_t)v);
+            serialize(std::forward<Stream>(out), static_cast<int16_t>(v));
         }
         else
         {
             // negative - in32_t
             constexpr uint8_t format = 0xd2;
-            out((const char*)&format, 1);
             v = htobe32(v);
+            out((const char*)&format, 1);
             out((const char*)&v, 4);
         }
     }
@@ -154,19 +154,19 @@ namespace msgpackcpp
         if (v >= 0)
         {
             // Positive - fits in uint64_t
-            serialize(std::forward<Stream>(out), (uint64_t)v);
+            serialize(std::forward<Stream>(out), static_cast<uint64_t>(v));
         }
         else if (v >= std::numeric_limits<int32_t>::min())
         {
             // negative - fits in int32_t
-            serialize(std::forward<Stream>(out), (int32_t)v);
+            serialize(std::forward<Stream>(out), static_cast<int32_t>(v));
         }
         else
         {
             // negative - int64_t
             constexpr uint8_t format = 0xd3;
-            out((const char*)&format, 1);
             v = htobe64(v);
+            out((const char*)&format, 1);
             out((const char*)&v, 8);
         }
     }
@@ -361,5 +361,12 @@ namespace msgpackcpp
             serialize(std::forward<Stream>(out), k);
             serialize(std::forward<Stream>(out), v);
         }
+    }
+
+    template<class Stream, class... Args>
+    inline void serialize_all(Stream&& out, Args&&... args)
+    {
+        using msgpackcpp::serialize;
+        (serialize(std::forward<Stream>(out), std::forward<Args>(args)),...);
     }
 }

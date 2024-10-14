@@ -48,25 +48,50 @@ Float random_float(Generator& gen)
     return std::uniform_real_distribution<Float>{std::numeric_limits<Float>::min(), std::numeric_limits<Float>::max()}(gen);
 }
 
-struct custom_struct
+namespace custom_namespace
 {
-    int64_t             my_int{};
-    double              my_float{};
-    std::string         my_str;
-    std::vector<float>  my_vec;
-};
+    struct custom_struct1
+    {
+        int64_t             my_int{};
+        double              my_float{};
+        std::string         my_str;
+        std::vector<float>  my_vec;
+    };
 
-BOOST_DESCRIBE_STRUCT(custom_struct, (), (
-    my_int,
-    my_float,
-    my_str,
-    my_vec
-))
+    BOOST_DESCRIBE_STRUCT(custom_struct1, (), (
+        my_int,
+        my_float,
+        my_str,
+        my_vec
+    ))
 
-BOOST_AUTO_TEST_CASE(test_basic_types)
+    struct custom_struct2
+    {
+        std::vector<custom_struct1> my_vec;
+    };
+
+    BOOST_DESCRIBE_STRUCT(custom_struct2, (), (my_vec))
+
+    struct custom_struct3
+    {
+        int64_t             my_int{};
+        double              my_float{};
+        std::string         my_str;
+        std::vector<float>  my_vec;
+        custom_struct2      my_struct;
+    };
+
+    template<class Stream>
+    void serialize(Stream&& out, const custom_struct3& obj)
+    {
+        serialize_all(std::forward<Stream>(out), obj.my_int, obj.my_float, obj.my_str, obj.my_vec, obj.my_struct);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_serialize_basic_types)
 {
     std::mt19937 eng(std::random_device{}());
-    std::vector<uint8_t> buf1, buf2;
+    std::vector<uint8_t> buf1, buf2, buf3;
 
     for (int repeat = 0 ; repeat < 100000 ; ++repeat)
     {
@@ -110,15 +135,19 @@ BOOST_AUTO_TEST_CASE(test_basic_types)
             serialize(sink(buf2), h);
             serialize(sink(buf2), i);
             serialize(sink(buf2), j);
+
+            serialize_all(sink(buf3), a, b, c, d, e, f, g, h, i, j);
         }
 
         BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
+        BOOST_TEST_REQUIRE(num_errors(buf1, buf3) == 0);
         buf1.clear();
         buf2.clear();
+        buf3.clear();
     }
 }
 
-BOOST_AUTO_TEST_CASE(test_string_and_binary_arrays)
+BOOST_AUTO_TEST_CASE(test_serialize_string_and_binary_arrays)
 {
     std::mt19937 eng(std::random_device{}());
     std::vector<uint8_t> buf1, buf2;
@@ -187,7 +216,8 @@ BOOST_AUTO_TEST_CASE(test_string_and_binary_arrays)
 
     {
         // using custom library
-        using namespace msgpackcpp;
+        using msgpackcpp::serialize;
+        using msgpackcpp::sink;
         serialize(sink(buf2), k);
         serialize(sink(buf2), l);
         serialize(sink(buf2), m);
@@ -207,7 +237,7 @@ BOOST_AUTO_TEST_CASE(test_string_and_binary_arrays)
     BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
 }
 
-BOOST_AUTO_TEST_CASE(test_maps)
+BOOST_AUTO_TEST_CASE(test_serialize_maps)
 {
     std::mt19937 eng(std::random_device{}());
     std::vector<uint8_t> buf1, buf2;
@@ -241,33 +271,33 @@ BOOST_AUTO_TEST_CASE(test_maps)
     BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
 }
 
-BOOST_AUTO_TEST_CASE(test_custom_struct)
+BOOST_AUTO_TEST_CASE(test_serialize_custom_struct)
 {
     std::mt19937 eng(std::random_device{}());
     std::vector<uint8_t> buf1, buf2;
 
-    custom_struct str;
-    str.my_int      = random_int<int64_t>(eng);
-    str.my_float    = random_float<float>(eng);
-    str.my_str      = "Hello there!";
-    str.my_vec.resize(1024);
-    std::generate(begin(str.my_vec), end(str.my_vec), [&]{return random_float<float>(eng);});
+    custom_namespace::custom_struct1 a;
+    a.my_int      = random_int<int64_t>(eng);
+    a.my_float    = random_float<float>(eng);
+    a.my_str      = "Hello there!";
+    a.my_vec.resize(1024);
+    std::generate(begin(a.my_vec), end(a.my_vec), [&]{return random_float<float>(eng);});
 
     {
         // using msgpack-c library
         vector_sink sink{buf1};
         msgpack::packer pack{&sink};
         pack.pack_array(4);
-        pack.pack(str.my_int);
-        pack.pack(str.my_float);
-        pack.pack(str.my_str);
-        pack.pack(str.my_vec);
+        pack.pack(a.my_int);
+        pack.pack(a.my_float);
+        pack.pack(a.my_str);
+        pack.pack(a.my_vec);
     }
 
     {
         // using custom library
         using namespace msgpackcpp;
-        serialize(sink(buf2), str);
+        serialize(sink(buf2), a);
     }
 
     BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
@@ -281,20 +311,41 @@ BOOST_AUTO_TEST_CASE(test_custom_struct)
         msgpack::packer pack{&sink};
         pack.pack_map(4);
         pack.pack("my_int");
-        pack.pack(str.my_int);
+        pack.pack(a.my_int);
         pack.pack("my_float");
-        pack.pack(str.my_float);
+        pack.pack(a.my_float);
         pack.pack("my_str");
-        pack.pack(str.my_str);
+        pack.pack(a.my_str);
         pack.pack("my_vec");
-        pack.pack(str.my_vec);
+        pack.pack(a.my_vec);
     }
 
     {
         // using custom library
         using namespace msgpackcpp;
-        serialize(sink(buf2), str, true);
+        serialize(sink(buf2), a, true);
     }
 
     BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
+
+    custom_namespace::custom_struct2 b;
+    b.my_vec.push_back(a);
+    b.my_vec.push_back(a);
+
+    custom_namespace::custom_struct3 c;
+    c.my_int    = random_int<int64_t>(eng);
+    c.my_float  = random_float<float>(eng);
+    c.my_str    = "I have the high ground";
+    c.my_vec.resize(10, 2);
+    c.my_struct = b;
+
+    buf2.clear();
+
+    {
+        // using custom library
+        using namespace msgpackcpp;
+        serialize(sink(buf2), c);
+    }
+
+    BOOST_TEST_REQUIRE(buf2.size() > 0lu);
 }
