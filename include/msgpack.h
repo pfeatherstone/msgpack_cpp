@@ -51,6 +51,26 @@ namespace msgpackcpp
         }       
     }
 
+    template<class Source>
+    inline void deserialize(Source& in, uint8_t& v)
+    {
+        uint8_t format{};
+        in((char*)&format, 1);
+
+        if (format <= 0x7f)
+        {
+            // positive fixint (7-bit positive integer)
+            v = format;
+        }
+        else if (format == 0xcc)
+        {
+            // unsigned 8
+            in((char*)&v, 1);
+        }
+        else
+            throw std::system_error(BAD_FORMAT);
+    }
+    
     template<class Stream>
     inline void serialize(Stream&& out, uint16_t v)
     {

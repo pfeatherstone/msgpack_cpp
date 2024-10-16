@@ -357,8 +357,8 @@ BOOST_AUTO_TEST_CASE(test_deserialize_basic_types)
 
     for (int repeat = 0 ; repeat < 100000 ; ++repeat)
     {
-        const bool a = std::uniform_int_distribution<int>{0,1}(eng) == 1;
-        // const uint8_t       a = random_int<uint8_t>(eng);
+        const bool          a = std::uniform_int_distribution<int>{0,1}(eng) == 1;
+        const uint8_t       b = random_int<uint8_t>(eng);
         // const int8_t        b = random_int<int8_t>(eng);
         // const uint16_t      c = random_int<uint16_t>(eng);
         // const int16_t       d = random_int<int16_t>(eng);
@@ -372,13 +372,16 @@ BOOST_AUTO_TEST_CASE(test_deserialize_basic_types)
         using namespace msgpackcpp;
         auto out = sink(buf);
         serialize(out, a);
+        serialize(out, b);
 
-        bool aa{};
+        bool    aa{};
+        uint8_t bb{};
         auto in = source(buf);
         deserialize(in, aa);
+        deserialize(in, bb);
 
         BOOST_TEST_REQUIRE(a == aa);
-        
+        BOOST_TEST_REQUIRE(b == bb);
         buf.clear();
     }
 }
