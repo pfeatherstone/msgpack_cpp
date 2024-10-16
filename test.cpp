@@ -88,13 +88,14 @@ namespace custom_namespace
     }
 }
 
-BOOST_AUTO_TEST_CASE(test_serialize_basic_types)
+BOOST_AUTO_TEST_CASE(test_basic_types)
 {
     std::mt19937 eng(std::random_device{}());
     std::vector<uint8_t> buf1, buf2, buf3;
 
     for (int repeat = 0 ; repeat < 100000 ; ++repeat)
     {
+        const bool          b_ = std::uniform_int_distribution<int>{0,1}(eng);
         const uint8_t       a = random_int<uint8_t>(eng);
         const int8_t        b = random_int<int8_t>(eng);
         const uint16_t      c = random_int<uint16_t>(eng);
@@ -106,10 +107,12 @@ BOOST_AUTO_TEST_CASE(test_serialize_basic_types)
         const float         i = random_float<float>(eng);
         const double        j = random_float<double>(eng);
 
+        // Test serialization compatibility
         {
             // using msgpack-c library
             vector_sink sink{buf1};
             msgpack::packer pack{&sink};
+            pack.pack(b_);
             pack.pack(a);
             pack.pack(b);
             pack.pack(c);
@@ -125,22 +128,64 @@ BOOST_AUTO_TEST_CASE(test_serialize_basic_types)
         {
             // using custom library
             using namespace msgpackcpp;
-            serialize(sink(buf2), a);
-            serialize(sink(buf2), b);
-            serialize(sink(buf2), c);
-            serialize(sink(buf2), d);
-            serialize(sink(buf2), e);
-            serialize(sink(buf2), f);
-            serialize(sink(buf2), g);
-            serialize(sink(buf2), h);
-            serialize(sink(buf2), i);
-            serialize(sink(buf2), j);
+            auto out = sink(buf2);
+            serialize(out, b_);
+            serialize(out, a);
+            serialize(out, b);
+            serialize(out, c);
+            serialize(out, d);
+            serialize(out, e);
+            serialize(out, f);
+            serialize(out, g);
+            serialize(out, h);
+            serialize(out, i);
+            serialize(out, j);
 
-            serialize_all(sink(buf3), a, b, c, d, e, f, g, h, i, j);
+            serialize_all(sink(buf3), b_, a, b, c, d, e, f, g, h, i, j);
         }
 
         BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
         BOOST_TEST_REQUIRE(num_errors(buf1, buf3) == 0);
+
+        // Test deserialization
+        {
+            using namespace msgpackcpp;
+            bool        bb_{};
+            uint8_t     aa{};
+            int8_t      bb{};
+            uint16_t    cc{};
+            int16_t     dd{};
+            uint32_t    ee{};
+            int32_t     ff{};
+            uint64_t    gg{};
+            int64_t     hh{};
+            float       ii{};
+            double      jj{};
+            auto in = source(buf2);
+            deserialize(in, bb_);
+            deserialize(in, aa);
+            deserialize(in, bb);
+            deserialize(in, cc);
+            deserialize(in, dd);
+            deserialize(in, ee);
+            deserialize(in, ff);
+            deserialize(in, gg);
+            deserialize(in, hh);
+            deserialize(in, ii);
+            deserialize(in, jj);
+            BOOST_TEST_REQUIRE(b_ == bb_);
+            BOOST_TEST_REQUIRE(a == aa);
+            BOOST_TEST_REQUIRE(b == bb);
+            BOOST_TEST_REQUIRE(c == cc);
+            BOOST_TEST_REQUIRE(d == dd);
+            BOOST_TEST_REQUIRE(e == ee);
+            BOOST_TEST_REQUIRE(f == ff);
+            BOOST_TEST_REQUIRE(g == gg);
+            BOOST_TEST_REQUIRE(h == hh);
+            BOOST_TEST_REQUIRE(i == ii);
+            BOOST_TEST_REQUIRE(j == jj);
+        }
+
         buf1.clear();
         buf2.clear();
         buf3.clear();
@@ -348,40 +393,4 @@ BOOST_AUTO_TEST_CASE(test_serialize_custom_struct)
     }
 
     BOOST_TEST_REQUIRE(buf2.size() > 0lu);
-}
-
-BOOST_AUTO_TEST_CASE(test_deserialize_basic_types)
-{
-    std::mt19937 eng(std::random_device{}());
-    std::vector<uint8_t> buf;
-
-    for (int repeat = 0 ; repeat < 100000 ; ++repeat)
-    {
-        const bool          a = std::uniform_int_distribution<int>{0,1}(eng) == 1;
-        const uint8_t       b = random_int<uint8_t>(eng);
-        // const int8_t        b = random_int<int8_t>(eng);
-        // const uint16_t      c = random_int<uint16_t>(eng);
-        // const int16_t       d = random_int<int16_t>(eng);
-        // const uint32_t      e = random_int<uint32_t>(eng);
-        // const int32_t       f = random_int<int32_t>(eng);
-        // const uint64_t      g = random_int<uint64_t>(eng);
-        // const int64_t       h = random_int<int64_t>(eng);
-        // const float         i = random_float<float>(eng);
-        // const double        j = random_float<double>(eng);
-
-        using namespace msgpackcpp;
-        auto out = sink(buf);
-        serialize(out, a);
-        serialize(out, b);
-
-        bool    aa{};
-        uint8_t bb{};
-        auto in = source(buf);
-        deserialize(in, aa);
-        deserialize(in, bb);
-
-        BOOST_TEST_REQUIRE(a == aa);
-        BOOST_TEST_REQUIRE(b == bb);
-        buf.clear();
-    }
 }

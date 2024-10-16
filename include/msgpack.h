@@ -51,26 +51,6 @@ namespace msgpackcpp
         }       
     }
 
-    template<class Source>
-    inline void deserialize(Source& in, uint8_t& v)
-    {
-        uint8_t format{};
-        in((char*)&format, 1);
-
-        if (format <= 0x7f)
-        {
-            // positive fixint (7-bit positive integer)
-            v = format;
-        }
-        else if (format == 0xcc)
-        {
-            // unsigned 8
-            in((char*)&v, 1);
-        }
-        else
-            throw std::system_error(BAD_FORMAT);
-    }
-    
     template<class Stream>
     inline void serialize(Stream&& out, uint16_t v)
     {
@@ -205,6 +185,93 @@ namespace msgpackcpp
         }
     }
 
+    template<class Source, class Int, std::enable_if_t<std::is_integral_v<Int>, bool> = true>
+    inline void deserialize(Source& in, Int& v)
+    {
+        uint8_t format{};
+        in((char*)&format, 1);
+
+        if (format <= 0x7f)
+        {
+            // positive fixint (7-bit positive integer)
+            v = format;
+        }
+        else if ((format & 0b11100000) == 0b11100000)
+        {
+            // negative fixing (5-bit negative integer)
+            int8_t tmp{};
+            memcpy(&tmp, &format, 1);
+            v = tmp;
+        }
+        else if (format == 0xcc)
+        {
+            // unsigned 8
+            uint8_t tmp{};
+            in((char*)&tmp, 1);
+            v = tmp;
+        }
+        else if (format == 0xcd)
+        {
+            // unsigned 16
+            uint16_t tmp{};
+            in((char*)&tmp, 2);
+            v = htobe16(tmp);
+        }
+        else if (format == 0xce)
+        {
+            // unsigned 32
+            uint32_t tmp{};
+            in((char*)&tmp, 4);
+            v = htobe32(tmp);
+        }
+        else if (format == 0xcf)
+        {
+            // unsigned 64
+            uint64_t tmp{};
+            in((char*)&tmp, 8);
+            v = htobe64(tmp);
+        }
+        else if (format == 0xd0)
+        {
+            // signed 8
+            int8_t tmp{};
+            in((char*)&tmp, 1);
+            v = tmp;
+        }
+        else if (format == 0xd1)
+        {
+            // signed 16
+            uint16_t tmp0{};
+            int16_t  tmp1{};
+            in((char*)&tmp0, 2);
+            tmp0 = htobe16(tmp0);
+            memcpy(&tmp1, &tmp0, 2);
+            v = tmp1;
+        }
+        else if (format == 0xd2)
+        {
+            // signed 32
+            uint32_t tmp0{};
+            int32_t  tmp1{};
+            in((char*)&tmp0, 4);
+            tmp0 = htobe32(tmp0);
+            memcpy(&tmp1, &tmp0, 4);
+            v = tmp1;
+        }
+        else if (format == 0xd3)
+        {
+            // signed 64
+            uint64_t tmp0{};
+            int64_t  tmp1{};
+            in((char*)&tmp0, 8);
+            tmp0 = htobe64(tmp0);
+            memcpy(&tmp1, &tmp0, 8);
+            v = tmp1;
+        }
+        else
+            throw std::system_error(BAD_FORMAT);
+    }
+
     template<class Stream>
     inline void serialize(Stream&& out, float v)
     {
@@ -225,6 +292,34 @@ namespace msgpackcpp
         tmp = htobe64(tmp);
         out((const char*)&format, 1);
         out((const char*)&tmp, 8);
+    }
+
+    template<class Source, class Float, std::enable_if_t<std::is_floating_point_v<Float>, bool> = true>
+    inline void deserialize(Source& in, Float& v)
+    {
+        uint8_t format{};
+        in((char*)&format, 1);
+
+        if (format == 0xca)
+        {
+            uint32_t tmp0{};
+            float    tmp1{};
+            in((char*)&tmp0, 4);
+            tmp0 = htobe32(tmp0);
+            memcpy(&tmp1, &tmp0, 4);
+            v = tmp1;
+        }
+        else if (format == 0xcb)
+        {
+            uint64_t tmp0{};
+            double   tmp1{};
+            in((char*)&tmp0, 8);
+            tmp0 = htobe64(tmp0);
+            memcpy(&tmp1, &tmp0, 8);
+            v = tmp1;
+        }
+        else
+            throw std::system_error(BAD_FORMAT);
     }
 
     template<class Stream>
