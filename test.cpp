@@ -192,7 +192,7 @@ BOOST_AUTO_TEST_CASE(test_basic_types)
     }
 }
 
-BOOST_AUTO_TEST_CASE(test_serialize_string_and_binary_arrays)
+BOOST_AUTO_TEST_CASE(test_string_and_binary_arrays)
 {
     std::mt19937 eng(std::random_device{}());
     std::vector<uint8_t> buf1, buf2;
@@ -239,6 +239,7 @@ BOOST_AUTO_TEST_CASE(test_serialize_string_and_binary_arrays)
     std::generate(begin(w), end(w), [&]{return random_int<uint8_t>(eng);});
     std::generate(begin(x), end(x), [&]{return random_int<int8_t>(eng);});
 
+    // Test serialization compatibility
     {
         // using msgpack-c library
         vector_sink sink{buf1};
@@ -280,6 +281,32 @@ BOOST_AUTO_TEST_CASE(test_serialize_string_and_binary_arrays)
     }
 
     BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
+
+    // Test deserialization
+    {
+        using namespace msgpackcpp;
+        std::string kk, ll, mm, nn, oo;
+        std::vector<char>       pp;
+        std::vector<uint8_t>    qq;
+        std::vector<int8_t>     rr;
+        auto in = source(buf2);
+        deserialize(in, kk);
+        deserialize(in, ll);
+        deserialize(in, mm);
+        deserialize(in, nn);
+        deserialize(in, oo);
+        BOOST_TEST_REQUIRE(k == kk);  
+        BOOST_TEST_REQUIRE(l == ll);
+        BOOST_TEST_REQUIRE(m == mm);
+        BOOST_TEST_REQUIRE(n == nn);
+        BOOST_TEST_REQUIRE(o == oo);
+        deserialize(in, pp);
+        deserialize(in, qq);
+        deserialize(in, rr);
+        BOOST_TEST_REQUIRE(num_errors(p, pp) == 0);
+        BOOST_TEST_REQUIRE(num_errors(q, qq) == 0);
+        BOOST_TEST_REQUIRE(num_errors(r, rr) == 0);
+    }
 }
 
 BOOST_AUTO_TEST_CASE(test_serialize_maps)

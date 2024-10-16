@@ -323,45 +323,38 @@ namespace msgpackcpp
     }
 
     template<class Stream>
-    inline void serialize(Stream&& out, std::string_view v)
+    inline void serialize_str_size(Stream&& out, const uint32_t size)
     {
-        if (v.size() < 32)
+        if (size < 32)
         {
-            const uint8_t format = 0xa0 | static_cast<uint8_t>(v.size());
+            const uint8_t format = 0xa0 | static_cast<uint8_t>(size);
             out((const char*)&format, 1);
         }
-        else if (v.size() < 256)
+        else if (size < 256)
         {
             constexpr uint8_t format = 0xd9;
-            const     uint8_t size8  = static_cast<uint8_t>(v.size());
+            const     uint8_t size8  = static_cast<uint8_t>(size);
             out((const char*)&format, 1);
             out((const char*)&size8, 1);
         }
-        else if (v.size() < 65536)
+        else if (size < 65536)
         {
             constexpr uint8_t  format = 0xda;
-            const     uint16_t size16 = htobe16(static_cast<uint16_t>(v.size()));
+            const     uint16_t size16 = htobe16(static_cast<uint16_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size16, 2);
         }
         else 
         {
             constexpr uint8_t  format = 0xdb;
-            const     uint32_t size32 = htobe32(static_cast<uint32_t>(v.size()));
+            const     uint32_t size32 = htobe32(static_cast<uint32_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size32, 4);
         }
-        out(v.data(), v.size());
     }
 
     template<class Stream>
-    inline void serialize(Stream&& out, const char* c_str)
-    {
-        serialize(std::forward<Stream>(out), std::string_view(c_str));
-    }
-    
-    template<class Stream>
-    inline void serialize_bin_array(Stream&& out, const char* data, const size_t len)
+    inline void serialize_bin_size(Stream&& out, const uint32_t len)
     {
         if (len < 256)
         {
@@ -384,23 +377,10 @@ namespace msgpackcpp
             out((const char*)&format, 1);
             out((const char*)&size32, 4);
         }
-        out(data, len);
-    }
-
-    template<class Stream, class Alloc>
-    inline void serialize(Stream&& out, const std::vector<char, Alloc>& v)
-    {
-        serialize_bin_array(std::forward<Stream>(out), (const char*)v.data(), v.size());
-    }
-
-    template<class Stream, class Alloc>
-    inline void serialize(Stream&& out, const std::vector<uint8_t, Alloc>& v)
-    {
-        serialize_bin_array(std::forward<Stream>(out), (const char*)v.data(), v.size());
     }
 
     template<class Stream>
-    inline void serialize_array_size(Stream&& out, uint32_t size)
+    inline void serialize_array_size(Stream&& out, const uint32_t size)
     {
         if (size < 16)
         {
@@ -423,16 +403,8 @@ namespace msgpackcpp
         }
     }
 
-    template<class Stream, class T, class Alloc>
-    inline void serialize(Stream&& out, const std::vector<T, Alloc>& v)
-    { 
-        serialize_array_size(std::forward<Stream>(out), v.size());
-        for (const auto& x : v)
-            serialize(std::forward<Stream>(out), x);
-    }
-
     template<class Stream>
-    inline void serialize_map_size(Stream&& out, uint32_t size)
+    inline void serialize_map_size(Stream&& out, const uint32_t size)
     {
         if (size < 16)
         {
@@ -453,6 +425,195 @@ namespace msgpackcpp
             out((const char*)&format, 1);
             out((const char*)&size32, 4);
         }
+    }
+
+    template<class Source>
+    inline void deserialize_str_size(Source& in, uint32_t& size)
+    {
+        uint8_t format{};
+        in((char*)&format, 1);
+
+        if ((format & 0b10100000) == 0b10100000)
+        {
+            size = format & 0b00011111;
+        }
+        else if (format == 0xd9)
+        {
+            uint8_t size8{};
+            in((char*)&size8, 1);
+            size = size8;
+        }
+        else if (format == 0xda)
+        {
+            uint16_t size16{};
+            in((char*)&size16, 2);
+            size = htobe16(size16);
+        }
+        else if (format == 0xdb)
+        {
+            uint32_t size32{};
+            in((char*)&size32, 4);
+            size = htobe32(size32);
+        }
+        else
+            throw std::system_error(BAD_FORMAT);
+    }
+
+    template<class Source>
+    inline void deserialize_bin_size(Source& in, uint32_t& size)
+    {
+        uint8_t format{};
+        in((char*)&format, 1);
+
+        if (format == 0xc4)
+        {
+            uint8_t size8{};
+            in((char*)&size8, 1);
+            size = size8;
+        }
+        else if (format == 0xc5)
+        {
+            uint16_t size16{};
+            in((char*)&size16, 2);
+            size = htobe16(size16);
+        }
+        else if (format == 0xc6)
+        {
+            uint32_t size32{};
+            in((char*)&size32, 4);
+            size = htobe32(size32);
+        }
+        else
+            throw std::system_error(BAD_FORMAT);
+    }
+
+    template<class Source>
+    inline void deserialize_array_size(Source& in, uint32_t& size)
+    {
+        uint8_t format{};
+        in((char*)&format, 1);
+
+        if ((format & 0b10010000) == 0b10010000)
+        {
+            size = format & 0b00001111;
+        }
+        else if (format == 0xdc)
+        {
+            uint16_t size16{};
+            in((char*)&size16, 2);
+            size = htobe16(size16);
+        }
+        else if (format == 0xdd)
+        {
+            uint32_t size32{};
+            in((char*)&size32, 4);
+            size = htobe32(size32);
+        }
+        else
+            throw std::system_error(BAD_FORMAT);
+    }
+
+    template<class Source>
+    inline void deserialize_map_size(Source& in, uint32_t& size)
+    {
+        uint8_t format{};
+        in((char*)&format, 1);
+
+        if ((format & 0b10000000) == 0b10000000)
+        {
+            size = format & 0b00001111;
+        }
+        else if (format == 0xde)
+        {
+            uint16_t size16{};
+            in((char*)&size16, 2);
+            size = htobe16(size16);
+        }
+        else if (format == 0xdf)
+        {
+            uint32_t size32{};
+            in((char*)&size32, 4);
+            size = htobe32(size32);
+        }
+        else
+            throw std::system_error(BAD_FORMAT);
+    }
+
+    template<class Stream>
+    inline void serialize(Stream&& out, std::string_view v)
+    {
+        serialize_str_size(std::forward<Stream>(out), v.size());
+        out(v.data(), v.size());
+    }
+
+    template<class Stream>
+    inline void serialize(Stream&& out, const char* c_str)
+    {
+        serialize(std::forward<Stream>(out), std::string_view(c_str));
+    }
+    
+    template<class Source>
+    inline void deserialize(Source& in, std::string& v)
+    {
+        uint32_t size{};
+        deserialize_str_size(in, size);
+        v.resize(size);
+        in(v.data(), size);
+    }
+
+    template<class Stream>
+    inline void serialize_bin_array(Stream&& out, const char* data, const size_t len)
+    {
+        serialize_bin_size(std::forward<Stream>(out), len);
+        out(data, len);
+    }
+
+    template<class Stream, class Alloc>
+    inline void serialize(Stream&& out, const std::vector<char, Alloc>& v)
+    {
+        serialize_bin_array(std::forward<Stream>(out), (const char*)v.data(), v.size());
+    }
+
+    template<class Stream, class Alloc>
+    inline void serialize(Stream&& out, const std::vector<uint8_t, Alloc>& v)
+    {
+        serialize_bin_array(std::forward<Stream>(out), (const char*)v.data(), v.size());
+    }
+
+    template<class Stream, class T, class Alloc>
+    inline void serialize(Stream&& out, const std::vector<T, Alloc>& v)
+    { 
+        serialize_array_size(std::forward<Stream>(out), v.size());
+        for (const auto& x : v)
+            serialize(std::forward<Stream>(out), x);
+    }
+
+    template<class Source, class Alloc>
+    inline void deserialize(Source& in, std::vector<char, Alloc>& v)
+    {
+        uint32_t size{};
+        deserialize_bin_size(in, size);
+        v.resize(size);
+        in(v.data(), size);
+    }
+
+    template<class Source, class Alloc>
+    inline void deserialize(Source& in, std::vector<uint8_t, Alloc>& v)
+    {
+        uint32_t size{};
+        deserialize_bin_size(in, size);
+        v.resize(size);
+        in((char*)v.data(), size);
+    }
+
+    template<class Source, class T, class Alloc>
+    inline void deserialize(Source& in, std::vector<T, Alloc>& v)
+    {
+        uint32_t size{};
+        deserialize_array_size(in, size);
+        v.resize(size);
+        for (auto& x : v)
+            deserialize(in, x);
     }
 
     template <
