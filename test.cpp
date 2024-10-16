@@ -349,3 +349,36 @@ BOOST_AUTO_TEST_CASE(test_serialize_custom_struct)
 
     BOOST_TEST_REQUIRE(buf2.size() > 0lu);
 }
+
+BOOST_AUTO_TEST_CASE(test_deserialize_basic_types)
+{
+    std::mt19937 eng(std::random_device{}());
+    std::vector<uint8_t> buf;
+
+    for (int repeat = 0 ; repeat < 100000 ; ++repeat)
+    {
+        const bool a = std::uniform_int_distribution<int>{0,1}(eng) == 1;
+        // const uint8_t       a = random_int<uint8_t>(eng);
+        // const int8_t        b = random_int<int8_t>(eng);
+        // const uint16_t      c = random_int<uint16_t>(eng);
+        // const int16_t       d = random_int<int16_t>(eng);
+        // const uint32_t      e = random_int<uint32_t>(eng);
+        // const int32_t       f = random_int<int32_t>(eng);
+        // const uint64_t      g = random_int<uint64_t>(eng);
+        // const int64_t       h = random_int<int64_t>(eng);
+        // const float         i = random_float<float>(eng);
+        // const double        j = random_float<double>(eng);
+
+        using namespace msgpackcpp;
+        auto out = sink(buf);
+        serialize(out, a);
+
+        bool aa{};
+        auto in = source(buf);
+        deserialize(in, aa);
+
+        BOOST_TEST_REQUIRE(a == aa);
+        
+        buf.clear();
+    }
+}
