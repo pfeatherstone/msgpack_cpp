@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <cstring>
 #include <endian.h>
+#include "msgpack_error.h"
 
 namespace msgpackcpp
 {
@@ -18,6 +19,19 @@ namespace msgpackcpp
     {
         const uint8_t format = v ? 0xc3 : 0xc2;
         out((const char*)&format, 1);  
+    }
+
+    template<class Source>
+    inline void deserialize(Source& in, bool& v)
+    {
+        uint8_t tmp{};
+        in((char*)&tmp, 1);
+        if (tmp == 0xc2)
+            v = false;
+        else if (tmp == 0xc3)
+            v = true;
+        else
+            throw std::system_error(BAD_FORMAT);
     }
     
     template<class Stream>
