@@ -9,11 +9,35 @@
 #include <map>
 #include <unordered_map>
 #include <cstring>
+#if __cpp_lib_bit_cast
+#include <bit>
+#endif
 #include <endian.h>
 #include "msgpack_error.h"
 
+
 namespace msgpackcpp
 {
+    /////////////////////////////////////////////////////////////////////////////////
+    /// Helpers
+    /////////////////////////////////////////////////////////////////////////////////
+
+#if __cpp_lib_bit_cast
+    using std::bit_cast;
+#else
+    template<class To, class From>
+    To bit_cast(const From& src) noexcept
+    {
+        To dst;
+        std::memcpy(&dst, &src, sizeof(To));
+        return dst;
+    }
+#endif
+
+    /////////////////////////////////////////////////////////////////////////////////
+    /// BOOL
+    /////////////////////////////////////////////////////////////////////////////////
+
     template<class Stream>
     inline void serialize(Stream&& out, bool v)
     {
@@ -33,155 +57,104 @@ namespace msgpackcpp
         else
             throw std::system_error(BAD_FORMAT);
     }
+
+    /////////////////////////////////////////////////////////////////////////////////
+    /// Unsigned integers
+    /////////////////////////////////////////////////////////////////////////////////
     
-    template<class Stream>
-    inline void serialize(Stream&& out, uint8_t v)
+    template<class Stream, class UInt, std::enable_if_t<std::is_integral_v<UInt> && std::is_unsigned_v<UInt>, bool> = true>
+    inline void serialize(Stream&& out, UInt v)
     {
         if (v <= 0x7f)
         {
             // positive fixint (7-bit positive integer)
-            out((const char*)&v, 1);
+            const uint8_t v8 = static_cast<uint8_t>(v);
+            out((const char*)&v8, 1);
         }
-        else
+        else if (v <= std::numeric_limits<uint8_t>::max())
         {
             // unsigned 8
             constexpr uint8_t format = 0xcc;
+            const     uint8_t v8     = static_cast<uint8_t>(v);
             out((const char*)&format, 1);
-            out((const char*)&v, 1);
-        }       
-    }
-
-    template<class Stream>
-    inline void serialize(Stream&& out, uint16_t v)
-    {
-        if (v <= std::numeric_limits<uint8_t>::max())
-        {
-            serialize(std::forward<Stream>(out), static_cast<uint8_t>(v));
+            out((const char*)&v8, 1);
         }
-        else
+        else if (v <= std::numeric_limits<uint16_t>::max())
         {
+            // unsigned 16
             constexpr uint8_t format = 0xcd;
-            v = htobe16(v);
+            const     uint16_t v16   = htobe16(static_cast<uint16_t>(v));
             out((const char*)&format, 1);
-            out((const char*)&v, 2);
-        }
-    }
-
-    template<class Stream>
-    inline void serialize(Stream&& out, uint32_t v)
-    {
-        if (v <= std::numeric_limits<uint16_t>::max())
+            out((const char*)&v16, 2);
+        }    
+        else if (v <= std::numeric_limits<uint32_t>::max())
         {
-            serialize(std::forward<Stream>(out), static_cast<uint16_t>(v));
-        }
-        else
-        {
+            // unsigned 32
             constexpr uint8_t format = 0xce;
-            v = htobe32(v);
+            const     uint32_t v32   = htobe32(static_cast<uint32_t>(v));
             out((const char*)&format, 1);
-            out((const char*)&v, 4);
-        }
-    }
-
-    template<class Stream>
-    inline void serialize(Stream&& out, uint64_t v)
-    {
-        if (v <= std::numeric_limits<uint32_t>::max())
-        {
-            serialize(std::forward<Stream>(out), static_cast<uint32_t>(v));
+            out((const char*)&v32, 4);
         }
         else
         {
+            // unsigned 64
             constexpr uint8_t format = 0xcf;
-            v = htobe64(v);
+            const     uint64_t v64   = htobe64(static_cast<uint64_t>(v));
             out((const char*)&format, 1);
-            out((const char*)&v, 8);
+            out((const char*)&v64, 8);
         }
     }
 
-    template<class Stream>
-    inline void serialize(Stream&& out, int8_t v)
-    {
-        if (v < -(1<<5))
-        {
-            // signed 8
-            constexpr uint8_t format = 0xd0;
-            out((const char*)&format, 1);
-            out((const char*)&v, 1);
-        }
-        else
-        {
-            // negative fixing (5-bit negative integer)
-            out((const char*)&v, 1);
-        }
-    }
+    /////////////////////////////////////////////////////////////////////////////////
+    /// Signed integers
+    /////////////////////////////////////////////////////////////////////////////////
 
-    template<class Stream>
-    inline void serialize(Stream&& out, int16_t v)
+    template<class Stream, class Int, std::enable_if_t<std::is_integral_v<Int> && std::is_signed_v<Int>, bool> = true>
+    inline void serialize(Stream&& out, Int v)
     {
         if (v >= 0)
         {
-            // Positive - fits in uint16
-            serialize(std::forward<Stream>(out), static_cast<uint16_t>(v));
+            // Positive - convert to corresponding unsigned int
+            const std::make_unsigned_t<Int> p = v;
+            serialize(std::forward<Stream>(out), p);
+        }
+        else if (v >= -(1<<5))
+        {
+            // negative fixing (5-bit negative integer)
+            const int8_t v8 = static_cast<int8_t>(v);
+            out((const char*)&v8, 1);
         }
         else if (v >= std::numeric_limits<int8_t>::min())
         {
-            // negative - fits in int8
-            serialize(std::forward<Stream>(out), static_cast<int8_t>(v));
+            // negative - int8
+            constexpr uint8_t format = 0xd0;
+            const     int8_t  v8     = static_cast<int8_t>(v);
+            out((const char*)&format, 1);
+            out((const char*)&v8, 1);
         }
-        else
+        else if (v >= std::numeric_limits<int16_t>::min())
         {
             // negative - int16
             constexpr uint8_t format = 0xd1;
-            v = htobe16(v);
+            const     uint16_t v16   = htobe16(bit_cast<uint16_t>(static_cast<int16_t>(v)));
             out((const char*)&format, 1);
-            out((const char*)&v, 2);
-        }
-    }
-
-    template<class Stream>
-    inline void serialize(Stream&& out, int32_t v)
-    {
-        if (v >= 0)
-        {
-            // Positive - fits in uint32_t
-            serialize(std::forward<Stream>(out), static_cast<uint32_t>(v));
-        }
-        else  if (v >= std::numeric_limits<int16_t>::min())
-        {
-            // negative - fits in int16_t
-            serialize(std::forward<Stream>(out), static_cast<int16_t>(v));
-        }
-        else
-        {
-            // negative - in32_t
-            constexpr uint8_t format = 0xd2;
-            v = htobe32(v);
-            out((const char*)&format, 1);
-            out((const char*)&v, 4);
-        }
-    }
-
-    template<class Stream>
-    inline void serialize(Stream&& out, int64_t v)
-    {
-        if (v >= 0)
-        {
-            // Positive - fits in uint64_t
-            serialize(std::forward<Stream>(out), static_cast<uint64_t>(v));
-        }
+            out((const char*)&v16, 2);
+        }    
         else if (v >= std::numeric_limits<int32_t>::min())
         {
-            // negative - fits in int32_t
-            serialize(std::forward<Stream>(out), static_cast<int32_t>(v));
+            // negative - int32_t
+            constexpr uint8_t format = 0xd2;
+            const     uint32_t v32   = htobe32(bit_cast<uint32_t>(static_cast<int32_t>(v)));
+            out((const char*)&format, 1);
+            out((const char*)&v32, 4);
         }
         else
         {
-            // negative - int64_t
+            // negative - int64_T
             constexpr uint8_t format = 0xd3;
-            v = htobe64(v);
+            const     uint64_t v64   = htobe64(bit_cast<uint64_t>(static_cast<int64_t>(v)));
             out((const char*)&format, 1);
-            out((const char*)&v, 8);
+            out((const char*)&v64, 8);
         }
     }
 
@@ -272,6 +245,10 @@ namespace msgpackcpp
             throw std::system_error(BAD_FORMAT);
     }
 
+    /////////////////////////////////////////////////////////////////////////////////
+    /// Floating point
+    /////////////////////////////////////////////////////////////////////////////////
+
     template<class Stream>
     inline void serialize(Stream&& out, float v)
     {
@@ -321,6 +298,10 @@ namespace msgpackcpp
         else
             throw std::system_error(BAD_FORMAT);
     }
+
+    /////////////////////////////////////////////////////////////////////////////////
+    /// String
+    /////////////////////////////////////////////////////////////////////////////////
 
     template<class Stream>
     inline void serialize_str_size(Stream&& out, const uint32_t size)
