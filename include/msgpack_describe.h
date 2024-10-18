@@ -30,4 +30,36 @@ namespace msgpackcpp
             });
         }
     }
+
+    template <
+        class Source, 
+        class T,
+        class D1 = boost::describe::describe_members<T, boost::describe::mod_any_access>
+    >
+    inline void deserialize(Source& in, T& obj, bool as_map = false)
+    { 
+        if (as_map)
+        {
+            uint32_t size{};
+            deserialize_map_size(in, size);
+            if (size != boost::mp11::mp_size<D1>::value)
+                throw std::system_error(BAD_SIZE); 
+
+            boost::mp11::mp_for_each<D1>([&](auto D) {
+                deserialize(in, D.name);
+                deserialize(in, obj.*D.pointer);
+            });
+        }
+        else
+        {
+            uint32_t size{};
+            deserialize_array_size(in, size);
+            if (size != boost::mp11::mp_size<D1>::value)
+                throw std::system_error(BAD_SIZE); 
+
+            boost::mp11::mp_for_each<D1>([&](auto D) {
+                deserialize(in, obj.*D.pointer);
+            });
+        }
+    }
 }
