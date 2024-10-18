@@ -46,7 +46,10 @@ namespace msgpackcpp
                 throw std::system_error(BAD_SIZE); 
 
             boost::mp11::mp_for_each<D1>([&](auto D) {
-                deserialize(in, D.name);
+                std::string name;
+                deserialize(in, name);
+                if (name != D.name)
+                    throw std::system_error(BAD_NAME);
                 deserialize(in, obj.*D.pointer);
             });
         }
