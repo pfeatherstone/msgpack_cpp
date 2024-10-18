@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE(test_string_and_binary_arrays)
     }
 }
 
-BOOST_AUTO_TEST_CASE(test_serialize_maps)
+BOOST_AUTO_TEST_CASE(test_maps)
 {
     std::mt19937 eng(std::random_device{}());
     std::vector<uint8_t> buf1, buf2;
@@ -357,6 +357,18 @@ BOOST_AUTO_TEST_CASE(test_serialize_maps)
     }
 
     BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
+
+    {
+        // Test deserialize
+        using namespace msgpackcpp;
+        std::map<std::string, int> aa;
+        std::unordered_map<uint64_t, std::string> bb;
+        auto in = source(buf2);
+        deserialize(in, aa);
+        deserialize(in, bb);
+        BOOST_TEST_REQUIRE(a == aa);
+        BOOST_TEST_REQUIRE(b == bb);
+    }
 }
 
 BOOST_AUTO_TEST_CASE(test_serialize_custom_struct)
