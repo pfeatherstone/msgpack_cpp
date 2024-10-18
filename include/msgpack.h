@@ -39,7 +39,7 @@ namespace msgpackcpp
     /////////////////////////////////////////////////////////////////////////////////
 
     template<class Stream>
-    inline void serialize(Stream&& out, bool v)
+    inline void serialize(Stream& out, bool v)
     {
         const uint8_t format = v ? 0xc3 : 0xc2;
         out((const char*)&format, 1);  
@@ -63,7 +63,7 @@ namespace msgpackcpp
     /////////////////////////////////////////////////////////////////////////////////
     
     template<class Stream, class UInt, std::enable_if_t<std::is_integral_v<UInt> && std::is_unsigned_v<UInt>, bool> = true>
-    inline void serialize(Stream&& out, UInt v)
+    inline void serialize(Stream& out, UInt v)
     {
         if (v <= 0x7f)
         {
@@ -110,13 +110,13 @@ namespace msgpackcpp
     /////////////////////////////////////////////////////////////////////////////////
 
     template<class Stream, class Int, std::enable_if_t<std::is_integral_v<Int> && std::is_signed_v<Int>, bool> = true>
-    inline void serialize(Stream&& out, Int v)
+    inline void serialize(Stream& out, Int v)
     {
         if (v >= 0)
         {
             // Positive - convert to corresponding unsigned int
             const std::make_unsigned_t<Int> p = v;
-            serialize(std::forward<Stream>(out), p);
+            serialize(out, p);
         }
         else if (v >= -(1<<5))
         {
@@ -128,7 +128,7 @@ namespace msgpackcpp
         {
             // negative - int8
             constexpr uint8_t format = 0xd0;
-            const     int8_t  v8     = static_cast<int8_t>(v);
+            const     int8_t  v8     = bit_cast<int8_t>(v);
             out((const char*)&format, 1);
             out((const char*)&v8, 1);
         }
@@ -172,9 +172,7 @@ namespace msgpackcpp
         else if ((format & 0b11100000) == 0b11100000)
         {
             // negative fixing (5-bit negative integer)
-            int8_t tmp{};
-            memcpy(&tmp, &format, 1);
-            v = tmp;
+            v = bit_cast<int8_t>(format);
         }
         else if (format == 0xcc)
         {
@@ -214,32 +212,26 @@ namespace msgpackcpp
         else if (format == 0xd1)
         {
             // signed 16
-            uint16_t tmp0{};
-            int16_t  tmp1{};
-            in((char*)&tmp0, 2);
-            tmp0 = htobe16(tmp0);
-            memcpy(&tmp1, &tmp0, 2);
-            v = tmp1;
+            uint16_t tmp{};
+            in((char*)&tmp, 2);
+            tmp = htobe16(tmp);
+            v = bit_cast<int16_t>(tmp);
         }
         else if (format == 0xd2)
         {
             // signed 32
-            uint32_t tmp0{};
-            int32_t  tmp1{};
-            in((char*)&tmp0, 4);
-            tmp0 = htobe32(tmp0);
-            memcpy(&tmp1, &tmp0, 4);
-            v = tmp1;
+            uint32_t tmp{};
+            in((char*)&tmp, 4);
+            tmp = htobe32(tmp);
+            v = bit_cast<int32_t>(tmp);
         }
         else if (format == 0xd3)
         {
             // signed 64
-            uint64_t tmp0{};
-            int64_t  tmp1{};
-            in((char*)&tmp0, 8);
-            tmp0 = htobe64(tmp0);
-            memcpy(&tmp1, &tmp0, 8);
-            v = tmp1;
+            uint64_t tmp{};
+            in((char*)&tmp, 8);
+            tmp = htobe64(tmp);
+            v = bit_cast<int64_t>(tmp);;
         }
         else
             throw std::system_error(BAD_FORMAT);
@@ -250,23 +242,19 @@ namespace msgpackcpp
     /////////////////////////////////////////////////////////////////////////////////
 
     template<class Stream>
-    inline void serialize(Stream&& out, float v)
+    inline void serialize(Stream& out, float v)
     {
-        constexpr uint8_t format = 0xca;
-        uint32_t tmp{};
-        std::memcpy(&tmp, &v, 4);
-        tmp = htobe32(tmp);
+        constexpr uint8_t  format   = 0xca;
+        const     uint32_t tmp      = htobe32(bit_cast<uint32_t>(v)); 
         out((const char*)&format, 1);
         out((const char*)&tmp, 4);
     }
 
     template<class Stream>
-    inline void serialize(Stream&& out, double v)
+    inline void serialize(Stream& out, double v)
     {
-        constexpr uint8_t format = 0xcb;
-        uint64_t tmp{};
-        std::memcpy(&tmp, &v, 8);
-        tmp = htobe64(tmp);
+        constexpr uint8_t  format   = 0xcb;
+        const     uint64_t tmp      = htobe64(bit_cast<uint64_t>(v)); 
         out((const char*)&format, 1);
         out((const char*)&tmp, 8);
     }
@@ -279,21 +267,15 @@ namespace msgpackcpp
 
         if (format == 0xca)
         {
-            uint32_t tmp0{};
-            float    tmp1{};
-            in((char*)&tmp0, 4);
-            tmp0 = htobe32(tmp0);
-            memcpy(&tmp1, &tmp0, 4);
-            v = tmp1;
+            uint32_t tmp{};
+            in((char*)&tmp, 4);
+            v = bit_cast<float>(htobe32(tmp));
         }
         else if (format == 0xcb)
         {
-            uint64_t tmp0{};
-            double   tmp1{};
-            in((char*)&tmp0, 8);
-            tmp0 = htobe64(tmp0);
-            memcpy(&tmp1, &tmp0, 8);
-            v = tmp1;
+            uint64_t tmp{};
+            in((char*)&tmp, 8);
+            v = bit_cast<double>(htobe64(tmp));
         }
         else
             throw std::system_error(BAD_FORMAT);
@@ -304,7 +286,7 @@ namespace msgpackcpp
     /////////////////////////////////////////////////////////////////////////////////
 
     template<class Stream>
-    inline void serialize_str_size(Stream&& out, const uint32_t size)
+    inline void serialize_str_size(Stream& out, const uint32_t size)
     {
         if (size < 32)
         {
@@ -334,87 +316,13 @@ namespace msgpackcpp
         }
     }
 
-    template<class Stream>
-    inline void serialize_bin_size(Stream&& out, const uint32_t len)
-    {
-        if (len < 256)
-        {
-            constexpr uint8_t format = 0xc4;
-            const     uint8_t size8  = static_cast<uint8_t>(len);
-            out((const char*)&format, 1);
-            out((const char*)&size8, 1);
-        }
-        else if (len < 65536)
-        {
-            constexpr uint8_t  format = 0xc5;
-            const     uint16_t size16 = htobe16(static_cast<uint16_t>(len));
-            out((const char*)&format, 1);
-            out((const char*)&size16, 2);
-        }
-        else 
-        {
-            constexpr uint8_t  format = 0xc6;
-            const     uint32_t size32 = htobe32(static_cast<uint32_t>(len));
-            out((const char*)&format, 1);
-            out((const char*)&size32, 4);
-        }
-    }
-
-    template<class Stream>
-    inline void serialize_array_size(Stream&& out, const uint32_t size)
-    {
-        if (size < 16)
-        {
-            const uint8_t format = 0x90 | static_cast<uint8_t>(size);
-            out((const char*)&format, 1);
-        }
-        else if (size < 65536)
-        {
-            constexpr uint8_t  format = 0xdc;
-            const     uint16_t size16 = htobe16(static_cast<uint16_t>(size));
-            out((const char*)&format, 1);
-            out((const char*)&size16, 2);
-        }
-        else 
-        {
-            constexpr uint8_t  format = 0xdd;
-            const     uint32_t size32 = htobe32(static_cast<uint32_t>(size));
-            out((const char*)&format, 1);
-            out((const char*)&size32, 4);
-        }
-    }
-
-    template<class Stream>
-    inline void serialize_map_size(Stream&& out, const uint32_t size)
-    {
-        if (size < 16)
-        {
-            const uint8_t format = 0x80 | static_cast<uint8_t>(size);
-            out((const char*)&format, 1);
-        }
-        else if (size < 65536)
-        {
-            constexpr uint8_t  format = 0xde;
-            const     uint16_t size16 = htobe16(static_cast<uint16_t>(size));
-            out((const char*)&format, 1);
-            out((const char*)&size16, 2);
-        }
-        else 
-        {
-            constexpr uint8_t  format = 0xdf;
-            const     uint32_t size32 = htobe32(static_cast<uint32_t>(size));
-            out((const char*)&format, 1);
-            out((const char*)&size32, 4);
-        }
-    }
-
     template<class Source>
     inline void deserialize_str_size(Source& in, uint32_t& size)
     {
         uint8_t format{};
         in((char*)&format, 1);
 
-        if ((format & 0b10100000) == 0b10100000)
+        if ((format & 0b11100000) == 0b10100000)
         {
             size = format & 0b00011111;
         }
@@ -438,6 +346,58 @@ namespace msgpackcpp
         }
         else
             throw std::system_error(BAD_FORMAT);
+    }
+
+    template<class Stream>
+    inline void serialize(Stream& out, std::string_view v)
+    {
+        serialize_str_size(out, v.size());
+        out(v.data(), v.size());
+    }
+
+    template<class Stream>
+    inline void serialize(Stream& out, const char* c_str)
+    {
+        serialize(out, std::string_view(c_str));
+    }
+
+    template<class Source>
+    inline void deserialize(Source& in, std::string& v)
+    {
+        uint32_t size{};
+        deserialize_str_size(in, size);
+        v.resize(size);
+        in(v.data(), size);
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////
+    /// Binary array
+    /////////////////////////////////////////////////////////////////////////////////
+
+    template<class Stream>
+    inline void serialize_bin_size(Stream& out, const uint32_t len)
+    {
+        if (len < 256)
+        {
+            constexpr uint8_t format = 0xc4;
+            const     uint8_t size8  = static_cast<uint8_t>(len);
+            out((const char*)&format, 1);
+            out((const char*)&size8, 1);
+        }
+        else if (len < 65536)
+        {
+            constexpr uint8_t  format = 0xc5;
+            const     uint16_t size16 = htobe16(static_cast<uint16_t>(len));
+            out((const char*)&format, 1);
+            out((const char*)&size16, 2);
+        }
+        else 
+        {
+            constexpr uint8_t  format = 0xc6;
+            const     uint32_t size32 = htobe32(static_cast<uint32_t>(len));
+            out((const char*)&format, 1);
+            out((const char*)&size32, 4);
+        }
     }
 
     template<class Source>
@@ -468,105 +428,23 @@ namespace msgpackcpp
             throw std::system_error(BAD_FORMAT);
     }
 
-    template<class Source>
-    inline void deserialize_array_size(Source& in, uint32_t& size)
-    {
-        uint8_t format{};
-        in((char*)&format, 1);
-
-        if ((format & 0b10010000) == 0b10010000)
-        {
-            size = format & 0b00001111;
-        }
-        else if (format == 0xdc)
-        {
-            uint16_t size16{};
-            in((char*)&size16, 2);
-            size = htobe16(size16);
-        }
-        else if (format == 0xdd)
-        {
-            uint32_t size32{};
-            in((char*)&size32, 4);
-            size = htobe32(size32);
-        }
-        else
-            throw std::system_error(BAD_FORMAT);
-    }
-
-    template<class Source>
-    inline void deserialize_map_size(Source& in, uint32_t& size)
-    {
-        uint8_t format{};
-        in((char*)&format, 1);
-
-        if ((format & 0b10000000) == 0b10000000)
-        {
-            size = format & 0b00001111;
-        }
-        else if (format == 0xde)
-        {
-            uint16_t size16{};
-            in((char*)&size16, 2);
-            size = htobe16(size16);
-        }
-        else if (format == 0xdf)
-        {
-            uint32_t size32{};
-            in((char*)&size32, 4);
-            size = htobe32(size32);
-        }
-        else
-            throw std::system_error(BAD_FORMAT);
-    }
-
     template<class Stream>
-    inline void serialize(Stream&& out, std::string_view v)
+    inline void serialize_bin_array(Stream& out, const char* data, const uint32_t len)
     {
-        serialize_str_size(std::forward<Stream>(out), v.size());
-        out(v.data(), v.size());
-    }
-
-    template<class Stream>
-    inline void serialize(Stream&& out, const char* c_str)
-    {
-        serialize(std::forward<Stream>(out), std::string_view(c_str));
-    }
-    
-    template<class Source>
-    inline void deserialize(Source& in, std::string& v)
-    {
-        uint32_t size{};
-        deserialize_str_size(in, size);
-        v.resize(size);
-        in(v.data(), size);
-    }
-
-    template<class Stream>
-    inline void serialize_bin_array(Stream&& out, const char* data, const size_t len)
-    {
-        serialize_bin_size(std::forward<Stream>(out), len);
+        serialize_bin_size(out, len);
         out(data, len);
     }
 
     template<class Stream, class Alloc>
-    inline void serialize(Stream&& out, const std::vector<char, Alloc>& v)
+    inline void serialize(Stream& out, const std::vector<char, Alloc>& v)
     {
-        serialize_bin_array(std::forward<Stream>(out), (const char*)v.data(), v.size());
+        serialize_bin_array(out, (const char*)v.data(), v.size());
     }
 
     template<class Stream, class Alloc>
-    inline void serialize(Stream&& out, const std::vector<uint8_t, Alloc>& v)
+    inline void serialize(Stream& out, const std::vector<uint8_t, Alloc>& v)
     {
-        serialize_bin_array(std::forward<Stream>(out), (const char*)v.data(), v.size());
-    }
-
-    template<class Stream, class T, class Alloc>
-    inline void serialize(Stream&& out, const std::vector<T, Alloc>& v)
-    { 
-        serialize_array_size(std::forward<Stream>(out), v.size());
-        for (const auto& x : v)
-            serialize(std::forward<Stream>(out), x);
+        serialize_bin_array(out, (const char*)v.data(), v.size());
     }
 
     template<class Source, class Alloc>
@@ -587,6 +465,68 @@ namespace msgpackcpp
         in((char*)v.data(), size);
     }
 
+    /////////////////////////////////////////////////////////////////////////////////
+    /// Array
+    /////////////////////////////////////////////////////////////////////////////////
+
+    template<class Stream>
+    inline void serialize_array_size(Stream& out, const uint32_t size)
+    {
+        if (size < 16)
+        {
+            const uint8_t format = 0b10010000 | static_cast<uint8_t>(size);
+            out((const char*)&format, 1);
+        }
+        else if (size < 65536)
+        {
+            constexpr uint8_t  format = 0xdc;
+            const     uint16_t size16 = htobe16(static_cast<uint16_t>(size));
+            out((const char*)&format, 1);
+            out((const char*)&size16, 2);
+        }
+        else 
+        {
+            constexpr uint8_t  format = 0xdd;
+            const     uint32_t size32 = htobe32(static_cast<uint32_t>(size));
+            out((const char*)&format, 1);
+            out((const char*)&size32, 4);
+        }
+    }
+
+    template<class Source>
+    inline void deserialize_array_size(Source& in, uint32_t& size)
+    {
+        uint8_t format{};
+        in((char*)&format, 1);
+
+        if ((format & 0b11110000) == 0b10010000)
+        {
+            size = format & 0b00001111;
+        }
+        else if (format == 0xdc)
+        {
+            uint16_t size16{};
+            in((char*)&size16, 2);
+            size = htobe16(size16);
+        }
+        else if (format == 0xdd)
+        {
+            uint32_t size32{};
+            in((char*)&size32, 4);
+            size = htobe32(size32);
+        }
+        else
+            throw std::system_error(BAD_FORMAT);
+    }
+
+    template<class Stream, class T, class Alloc>
+    inline void serialize(Stream& out, const std::vector<T, Alloc>& v)
+    { 
+        serialize_array_size(out, v.size());
+        for (const auto& x : v)
+            serialize(out, x);
+    }
+
     template<class Source, class T, class Alloc>
     inline void deserialize(Source& in, std::vector<T, Alloc>& v)
     {
@@ -597,6 +537,60 @@ namespace msgpackcpp
             deserialize(in, x);
     }
 
+    /////////////////////////////////////////////////////////////////////////////////
+    /// Maps
+    /////////////////////////////////////////////////////////////////////////////////
+
+    template<class Stream>
+    inline void serialize_map_size(Stream& out, const uint32_t size)
+    {
+        if (size < 16)
+        {
+            const uint8_t format = 0b10000000 | static_cast<uint8_t>(size);
+            out((const char*)&format, 1);
+        }
+        else if (size < 65536)
+        {
+            constexpr uint8_t  format = 0xde;
+            const     uint16_t size16 = htobe16(static_cast<uint16_t>(size));
+            out((const char*)&format, 1);
+            out((const char*)&size16, 2);
+        }
+        else 
+        {
+            constexpr uint8_t  format = 0xdf;
+            const     uint32_t size32 = htobe32(static_cast<uint32_t>(size));
+            out((const char*)&format, 1);
+            out((const char*)&size32, 4);
+        }
+    }
+
+    template<class Source>
+    inline void deserialize_map_size(Source& in, uint32_t& size)
+    {
+        uint8_t format{};
+        in((char*)&format, 1);
+
+        if ((format & 0b11110000) == 0b10000000)
+        {
+            size = format & 0b00001111;
+        }
+        else if (format == 0xde)
+        {
+            uint16_t size16{};
+            in((char*)&size16, 2);
+            size = htobe16(size16);
+        }
+        else if (format == 0xdf)
+        {
+            uint32_t size32{};
+            in((char*)&size32, 4);
+            size = htobe32(size32);
+        }
+        else
+            throw std::system_error(BAD_FORMAT);
+    }
+
     template <
         class Stream, 
         class K, 
@@ -604,14 +598,14 @@ namespace msgpackcpp
         class Compare = std::less<K>,
         class Alloc = std::allocator<std::pair<const K, V>>
     >
-    inline void serialize(Stream&& out, const std::map<K,V,Compare,Alloc>& map)
+    inline void serialize(Stream& out, const std::map<K,V,Compare,Alloc>& map)
     {
-        serialize_map_size(std::forward<Stream>(out), map.size());
+        serialize_map_size(out, map.size());
         
         for (const auto& [k,v] : map)
         {
-            serialize(std::forward<Stream>(out), k);
-            serialize(std::forward<Stream>(out), v);
+            serialize(out, k);
+            serialize(out, v);
         }
     }
 
@@ -623,21 +617,21 @@ namespace msgpackcpp
         class KeyEqual  = std::equal_to<K>,
         class Alloc     = std::allocator<std::pair<const K, V>>
     >
-    inline void serialize(Stream&& out, const std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map)
+    inline void serialize(Stream& out, const std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map)
     {
-        serialize_map_size(std::forward<Stream>(out), map.size());
+        serialize_map_size(out, map.size());
         
         for (const auto& [k,v] : map)
         {
-            serialize(std::forward<Stream>(out), k);
-            serialize(std::forward<Stream>(out), v);
+            serialize(out, k);
+            serialize(out, v);
         }
     }
 
     template<class Stream, class... Args>
-    inline void serialize_all(Stream&& out, Args&&... args)
+    inline void serialize_all(Stream& out, Args&&... args)
     {
         using msgpackcpp::serialize;
-        (serialize(std::forward<Stream>(out), std::forward<Args>(args)),...);
+        (serialize(out, std::forward<Args>(args)),...);
     }
 }
