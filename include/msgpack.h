@@ -610,6 +610,28 @@ namespace msgpackcpp
     }
 
     template <
+        class Source, 
+        class K, 
+        class V, 
+        class Compare = std::less<K>,
+        class Alloc = std::allocator<std::pair<const K, V>>
+    >
+    inline void deserialize(Source& in, std::map<K,V,Compare,Alloc>& map)
+    {
+        uint32_t size{};
+        deserialize_map_size(in, size);
+        
+        for (uint32_t i = 0 ; i < size ; ++i)
+        {
+            K key{};
+            V val{};
+            deserialize(in, key);
+            deserialize(in, val);
+            map.emplace(std::make_pair(key, val));
+        }
+    }
+
+    template <
         class Stream, 
         class K,
         class V,
@@ -627,6 +649,33 @@ namespace msgpackcpp
             serialize(out, v);
         }
     }
+
+    template <
+        class Source, 
+        class K,
+        class V,
+        class Hash      = std::hash<K>,
+        class KeyEqual  = std::equal_to<K>,
+        class Alloc     = std::allocator<std::pair<const K, V>>
+    >
+    inline void deserialize(Source& in, std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map)
+    {
+        uint32_t size{};
+        deserialize_map_size(in, size);
+        
+        for (uint32_t i = 0 ; i < size ; ++i)
+        {
+            K key{};
+            V val{};
+            deserialize(in, key);
+            deserialize(in, val);
+            map.emplace(std::make_pair(key, val));
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////
+    /// Helpers
+    /////////////////////////////////////////////////////////////////////////////////
 
     template<class Stream, class... Args>
     inline void serialize_all(Stream& out, Args&&... args)
