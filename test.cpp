@@ -65,12 +65,27 @@ namespace custom_namespace
         my_vec
     ))
 
+    bool operator==(const custom_struct1& a, const custom_struct1& b)
+    {
+        return  a.my_int        == b.my_int &&
+                a.my_float      == b.my_float &&
+                a.my_str        == b.my_str &&
+                a.my_vec.size() == b.my_vec.size() &&
+                std::equal(begin(a.my_vec), end(a.my_vec), begin(b.my_vec));
+    }
+
     struct custom_struct2
     {
         std::vector<custom_struct1> my_vec;
     };
 
     BOOST_DESCRIBE_STRUCT(custom_struct2, (), (my_vec))
+
+    bool operator==(const custom_struct2& a, const custom_struct2& b)
+    {
+        return  a.my_vec.size() == b.my_vec.size() &&
+                std::equal(begin(a.my_vec), end(a.my_vec), begin(b.my_vec));
+    }
 
     struct custom_struct3
     {
@@ -86,6 +101,26 @@ namespace custom_namespace
     {
         serialize_array_size(out, 5);
         serialize_all(out, obj.my_int, obj.my_float, obj.my_str, obj.my_vec, obj.my_struct);
+    }
+
+    template<class Source>
+    void deserialize(Source& in, custom_struct3& obj)
+    {
+        uint32_t size{};
+        deserialize_array_size(in, size);
+        if (size != 5)
+            throw std::system_error(msgpackcpp::BAD_SIZE);
+        deserialize_all(in, obj.my_int, obj.my_float, obj.my_str, obj.my_vec, obj.my_struct);
+    }
+
+    bool operator==(const custom_struct3& a, const custom_struct3& b)
+    {
+        return  a.my_int        == b.my_int         &&
+                a.my_float      == b.my_float       &&
+                a.my_str        == b.my_str         &&
+                a.my_vec.size() == b.my_vec.size()  &&
+                std::equal(begin(a.my_vec), end(a.my_vec), begin(b.my_vec)) &&
+                a.my_struct     == b.my_struct;
     }
 }
 
@@ -371,7 +406,7 @@ BOOST_AUTO_TEST_CASE(test_maps)
     }
 }
 
-BOOST_AUTO_TEST_CASE(test_serialize_custom_struct)
+BOOST_AUTO_TEST_CASE(test_custom_struct)
 {
     std::mt19937 eng(std::random_device{}());
     std::vector<uint8_t> buf1, buf2;
@@ -451,4 +486,13 @@ BOOST_AUTO_TEST_CASE(test_serialize_custom_struct)
     }
 
     BOOST_TEST_REQUIRE(buf2.size() > 0lu);
+
+    {
+        // Test deserialize
+        using namespace msgpackcpp;
+        custom_namespace::custom_struct3 cc;
+        auto in = source(buf2);
+        deserialize(in, cc);
+        BOOST_TEST_REQUIRE((c == cc) == true);
+    }
 }
