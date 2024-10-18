@@ -82,9 +82,10 @@ namespace custom_namespace
     };
 
     template<class Stream>
-    void serialize(Stream&& out, const custom_struct3& obj)
+    void serialize(Stream& out, const custom_struct3& obj)
     {
-        serialize_all(std::forward<Stream>(out), obj.my_int, obj.my_float, obj.my_str, obj.my_vec, obj.my_struct);
+        serialize_array_size(out, 5);
+        serialize_all(out, obj.my_int, obj.my_float, obj.my_str, obj.my_vec, obj.my_struct);
     }
 }
 
@@ -141,7 +142,8 @@ BOOST_AUTO_TEST_CASE(test_basic_types)
             serialize(out, i);
             serialize(out, j);
 
-            serialize_all(sink(buf3), b_, a, b, c, d, e, f, g, h, i, j);
+            auto out3 = sink(buf3);
+            serialize_all(out3, b_, a, b, c, d, e, f, g, h, i, j);
         }
 
         BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
@@ -264,20 +266,21 @@ BOOST_AUTO_TEST_CASE(test_string_and_binary_arrays)
         // using custom library
         using msgpackcpp::serialize;
         using msgpackcpp::sink;
-        serialize(sink(buf2), k);
-        serialize(sink(buf2), l);
-        serialize(sink(buf2), m);
-        serialize(sink(buf2), n);
-        serialize(sink(buf2), o);
-        serialize(sink(buf2), p);
-        serialize(sink(buf2), q);
-        serialize(sink(buf2), r);
-        serialize(sink(buf2), s);
-        serialize(sink(buf2), t);
-        serialize(sink(buf2), u);
-        serialize(sink(buf2), v);
-        serialize(sink(buf2), w);
-        serialize(sink(buf2), x);
+        auto out = sink(buf2);
+        serialize(out, k);
+        serialize(out, l);
+        serialize(out, m);
+        serialize(out, n);
+        serialize(out, o);
+        serialize(out, p);
+        serialize(out, q);
+        serialize(out, r);
+        serialize(out, s);
+        serialize(out, t);
+        serialize(out, u);
+        serialize(out, v);
+        serialize(out, w);
+        serialize(out, x);
     }
 
     BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
@@ -286,26 +289,38 @@ BOOST_AUTO_TEST_CASE(test_string_and_binary_arrays)
     {
         using namespace msgpackcpp;
         std::string kk, ll, mm, nn, oo;
-        std::vector<char>       pp;
-        std::vector<uint8_t>    qq;
-        std::vector<int8_t>     rr;
+        std::vector<char>       pp, ss, vv;
+        std::vector<uint8_t>    qq, tt, ww;
+        std::vector<int8_t>     rr, uu, xx;
         auto in = source(buf2);
         deserialize(in, kk);
         deserialize(in, ll);
         deserialize(in, mm);
         deserialize(in, nn);
         deserialize(in, oo);
+        deserialize(in, pp);
+        deserialize(in, qq);
+        deserialize(in, rr);
+        deserialize(in, ss);
+        deserialize(in, tt);
+        deserialize(in, uu);
+        deserialize(in, vv);
+        deserialize(in, ww);
+        deserialize(in, xx);
         BOOST_TEST_REQUIRE(k == kk);  
         BOOST_TEST_REQUIRE(l == ll);
         BOOST_TEST_REQUIRE(m == mm);
         BOOST_TEST_REQUIRE(n == nn);
         BOOST_TEST_REQUIRE(o == oo);
-        deserialize(in, pp);
-        deserialize(in, qq);
-        deserialize(in, rr);
         BOOST_TEST_REQUIRE(num_errors(p, pp) == 0);
         BOOST_TEST_REQUIRE(num_errors(q, qq) == 0);
         BOOST_TEST_REQUIRE(num_errors(r, rr) == 0);
+        BOOST_TEST_REQUIRE(num_errors(s, ss) == 0);
+        BOOST_TEST_REQUIRE(num_errors(t, tt) == 0);
+        BOOST_TEST_REQUIRE(num_errors(u, uu) == 0);
+        BOOST_TEST_REQUIRE(num_errors(v, vv) == 0);
+        BOOST_TEST_REQUIRE(num_errors(w, ww) == 0);
+        BOOST_TEST_REQUIRE(num_errors(x, xx) == 0);
     }
 }
 
@@ -336,8 +351,9 @@ BOOST_AUTO_TEST_CASE(test_serialize_maps)
     {
         // using custom library
         using namespace msgpackcpp;
-        serialize(sink(buf2), a);
-        serialize(sink(buf2), b);
+        auto out = sink(buf2);
+        serialize(out, a);
+        serialize(out, b);
     }
 
     BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
@@ -369,7 +385,8 @@ BOOST_AUTO_TEST_CASE(test_serialize_custom_struct)
     {
         // using custom library
         using namespace msgpackcpp;
-        serialize(sink(buf2), a);
+        auto out = sink(buf2);
+        serialize(out, a);
     }
 
     BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
@@ -395,7 +412,8 @@ BOOST_AUTO_TEST_CASE(test_serialize_custom_struct)
     {
         // using custom library
         using namespace msgpackcpp;
-        serialize(sink(buf2), a, true);
+        auto out = sink(buf2);
+        serialize(out, a, true);
     }
 
     BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
@@ -416,7 +434,8 @@ BOOST_AUTO_TEST_CASE(test_serialize_custom_struct)
     {
         // using custom library
         using namespace msgpackcpp;
-        serialize(sink(buf2), c);
+        auto out = sink(buf2);
+        serialize(out, c);
     }
 
     BOOST_TEST_REQUIRE(buf2.size() > 0lu);
