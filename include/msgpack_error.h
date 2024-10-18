@@ -9,7 +9,8 @@ namespace msgpackcpp
     {
         OUT_OF_DATA = 1,
         BAD_FORMAT  = 2,
-        BAD_SIZE    = 3
+        BAD_SIZE    = 3,
+        BAD_NAME    = 4
     };
 
     struct deserialization_error_category : std::error_category
@@ -26,6 +27,7 @@ namespace msgpackcpp
             case OUT_OF_DATA: return "Ran out of data while deserializing";
             case BAD_FORMAT:  return "Found bad format";
             case BAD_SIZE:    return "Found bad size";
+            case BAD_NAME:    return "Found bad name";
             default:          return "Unrecognised error";
             }
         }
