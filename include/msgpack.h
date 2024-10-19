@@ -128,7 +128,7 @@ namespace msgpackcpp
         {
             // negative - int8
             constexpr uint8_t format = 0xd0;
-            const     int8_t  v8     = bit_cast<int8_t>(v);
+            const     int8_t  v8     = static_cast<int8_t>(v);
             out((const char*)&format, 1);
             out((const char*)&v8, 1);
         }
@@ -214,24 +214,21 @@ namespace msgpackcpp
             // signed 16
             uint16_t tmp{};
             in((char*)&tmp, 2);
-            tmp = htobe16(tmp);
-            v = bit_cast<int16_t>(tmp);
+            v = bit_cast<int16_t>(htobe16(tmp));
         }
         else if (format == 0xd2)
         {
             // signed 32
             uint32_t tmp{};
             in((char*)&tmp, 4);
-            tmp = htobe32(tmp);
-            v = bit_cast<int32_t>(tmp);
+            v = bit_cast<int32_t>(htobe32(tmp));
         }
         else if (format == 0xd3)
         {
             // signed 64
             uint64_t tmp{};
             in((char*)&tmp, 8);
-            tmp = htobe64(tmp);
-            v = bit_cast<int64_t>(tmp);;
+            v = bit_cast<int64_t>(htobe64(tmp));
         }
         else
             throw std::system_error(BAD_FORMAT);
