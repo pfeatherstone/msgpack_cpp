@@ -1,11 +1,11 @@
 # msgpack_cpp
 C++ header-only msgpack library using kiss principle
 
-# Example
+## Example
 
-## High-level objects
+### High-level objects
 
-### `std::tuple`
+#### `std::tuple`
 
 ```
 using namespace msgpackcpp;
@@ -27,7 +27,7 @@ auto in = source(buf);
 deserialize(in, a);
 ```
 
-### `std::vector`
+#### `std::vector`
 
 ```
 using namespace msgpackcpp;
@@ -47,7 +47,7 @@ auto in = source(sin);
 deserialize(in, v2);
 ```
 
-### `std::map`
+#### `std::map`
 
 ```
 using namespace msgpackcpp;
@@ -63,7 +63,7 @@ auto in = source(buf);
 deserialize(in, b);
 ```
 
-### Custom object
+#### Custom object
 
 Option 1 : defined `serialize()` and `deserialize()` functions in the same namespace as your custom struct. This will get picked up by ADL.
 
@@ -147,3 +147,11 @@ serialize(out, a, /*as_map=*/true);
 auto in = source(buf);
 deserialize(in, b, /*as_map=*/true);
 ```
+
+## Installation
+
+Just copy the contents of the include folder in your project with `msgpack_describe.h` as an optional header.
+
+## Dependencies
+
+You just need a C++17 compiler. If you want to avail yourself of the convenient Boost.Describe integration in `msgpack_describe.h`, then you'll require that Boost library.
