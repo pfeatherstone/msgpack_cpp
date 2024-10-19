@@ -8,6 +8,7 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <tuple>
 #include <cstring>
 #if __cpp_lib_bit_cast
 #include <bit>
@@ -668,6 +669,32 @@ namespace msgpackcpp
             deserialize(in, val);
             map.emplace(std::make_pair(key, val));
         }
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////
+    /// Tuple
+    /////////////////////////////////////////////////////////////////////////////////
+
+    template<class Stream, class... Args>
+    inline void serialize(Stream& out, const std::tuple<Args...>& tpl)
+    {
+        serialize_array_size(out, sizeof...(Args));
+        std::apply([&](auto&&... args) {
+            (serialize(out, std::forward<decltype(args)>(args)),...);
+        }, tpl);
+    }
+
+    template<class Source, class... Args>
+    inline void deserialize(Source& in, std::tuple<Args...>& tpl)
+    {
+        uint32_t size{};
+        deserialize_array_size(in, size);
+        if (size != sizeof...(Args))
+            throw std::system_error(BAD_SIZE);
+
+        std::apply([&](auto&&... args) {
+            (deserialize(in, std::forward<decltype(args)>(args)),...);
+        }, tpl);
     }
 
     /////////////////////////////////////////////////////////////////////////////////

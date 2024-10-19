@@ -406,6 +406,40 @@ BOOST_AUTO_TEST_CASE(test_maps)
     }
 }
 
+BOOST_AUTO_TEST_CASE(test_tuple)
+{
+    std::mt19937 eng(std::random_device{}());
+    std::vector<uint8_t> buf1, buf2;
+
+    msgpack::type::tuple<int, bool, std::string> a(1, true, "example");
+    msgpack::type::tuple<int, bool, std::string> aa;
+
+    {
+        // using msgpack-c library
+        vector_sink sink{buf1};
+        msgpack::pack(sink, a);
+    }
+
+    {
+        // using custom library
+        using namespace msgpackcpp;
+        auto out = sink(buf2);
+        serialize(out, a);
+    }
+
+    BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
+
+    {
+        // deserialize
+        using namespace msgpackcpp;
+        auto in = source(buf2);
+        deserialize(in, aa);
+        BOOST_TEST_REQUIRE(std::get<0>(a) == std::get<0>(aa));
+        BOOST_TEST_REQUIRE(std::get<1>(a) == std::get<1>(aa));
+        BOOST_TEST_REQUIRE(std::get<2>(a) == std::get<2>(aa));
+    }
+}
+
 BOOST_AUTO_TEST_CASE(test_custom_struct)
 {
     std::mt19937 eng(std::random_device{}());
