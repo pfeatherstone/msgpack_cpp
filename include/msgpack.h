@@ -696,22 +696,4 @@ namespace msgpackcpp
             (deserialize(in, std::forward<decltype(args)>(args)),...);
         }, tpl);
     }
-
-    /////////////////////////////////////////////////////////////////////////////////
-    /// Helpers
-    /////////////////////////////////////////////////////////////////////////////////
-
-    template<class Stream, class... Args>
-    inline void serialize_all(Stream& out, const Args&... args)
-    {
-        using msgpackcpp::serialize;
-        (serialize(out, args),...);
-    }
-
-    template<class Source, class... Args>
-    inline void deserialize_all(Source& in, Args&... args)
-    {
-        using msgpackcpp::deserialize;
-        (deserialize(in, args),...);
-    }
 }

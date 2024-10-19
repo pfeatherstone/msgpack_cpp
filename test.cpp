@@ -99,18 +99,14 @@ namespace custom_namespace
     template<class Stream>
     void serialize(Stream& out, const custom_struct3& obj)
     {
-        serialize_array_size(out, 5);
-        serialize_all(out, obj.my_int, obj.my_float, obj.my_str, obj.my_vec, obj.my_struct);
+        serialize(out, std::tie(obj.my_int, obj.my_float, obj.my_str, obj.my_vec, obj.my_struct));
     }
 
     template<class Source>
     void deserialize(Source& in, custom_struct3& obj)
     {
-        uint32_t size{};
-        deserialize_array_size(in, size);
-        if (size != 5)
-            throw std::system_error(msgpackcpp::BAD_SIZE);
-        deserialize_all(in, obj.my_int, obj.my_float, obj.my_str, obj.my_vec, obj.my_struct);
+        auto members = std::tie(obj.my_int, obj.my_float, obj.my_str, obj.my_vec, obj.my_struct);
+        deserialize(in, members);
     }
 
     bool operator==(const custom_struct3& a, const custom_struct3& b)
@@ -127,7 +123,7 @@ namespace custom_namespace
 BOOST_AUTO_TEST_CASE(test_basic_types)
 {
     std::mt19937 eng(std::random_device{}());
-    std::vector<uint8_t> buf1, buf2, buf3;
+    std::vector<uint8_t> buf1, buf2;
 
     for (int repeat = 0 ; repeat < 100000 ; ++repeat)
     {
@@ -176,13 +172,9 @@ BOOST_AUTO_TEST_CASE(test_basic_types)
             serialize(out, h);
             serialize(out, i);
             serialize(out, j);
-
-            auto out3 = sink(buf3);
-            serialize_all(out3, b_, a, b, c, d, e, f, g, h, i, j);
         }
 
         BOOST_TEST_REQUIRE(num_errors(buf1, buf2) == 0);
-        BOOST_TEST_REQUIRE(num_errors(buf1, buf3) == 0);
 
         // Test deserialization
         {
@@ -225,7 +217,6 @@ BOOST_AUTO_TEST_CASE(test_basic_types)
 
         buf1.clear();
         buf2.clear();
-        buf3.clear();
     }
 }
 
