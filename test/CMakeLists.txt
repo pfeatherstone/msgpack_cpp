@@ -24,11 +24,17 @@ FetchContent_MakeAvailable(Boost msgpack)
 
 # Unit test
 add_executable(Test test.cpp)
-target_compile_features(Test PRIVATE cxx_std_20)
+target_compile_features(Test PRIVATE cxx_std_17)
 target_compile_options(Test PRIVATE -Wall -Wextra)
 target_include_directories(Test 
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
-  PRIVATE ${doctest_SOURCE_DIR}/doctest)
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 target_link_libraries(Test 
   PRIVATE Boost::describe Boost::unit_test_framework
   PRIVATE msgpack-cxx)
+
+# Example
+add_executable(Example example.cpp)
+target_compile_features(Example PRIVATE cxx_std_17)
+target_compile_options(Example PRIVATE -Wall -Wextra)
+target_include_directories(Example PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+target_link_libraries(Example PRIVATE Boost::describe)
