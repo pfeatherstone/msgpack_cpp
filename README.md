@@ -65,7 +65,7 @@ deserialize(in, b);
 
 #### Custom object
 
-Option 1 : defined `serialize()` and `deserialize()` functions in the same namespace as your custom struct. This will get picked up by ADL.
+Option 1 : define `serialize()` and `deserialize()` functions in the same namespace as your custom struct. This will get picked up by ADL.
 
 ```
 namespace mynamespace
