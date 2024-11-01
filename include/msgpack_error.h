@@ -33,7 +33,7 @@ namespace msgpackcpp
         }
     };
 
-    const deserialization_error_category& get_deserialization_error_category_singleton()
+    inline const deserialization_error_category& get_deserialization_error_category_singleton()
     {
         static deserialization_error_category singleton;
         return singleton;
