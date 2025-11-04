@@ -31,7 +31,8 @@ add_executable(tests
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/msgpack.cpp
   main.cpp
   value.cpp
-  pack.cpp)
+  pack.cpp
+  sinks.cpp)
 target_compile_features(tests PRIVATE cxx_std_17)
 target_compile_options(tests PRIVATE $<${IS_NOT_MSVC}:-Wall -Wextra -Werror>)
 target_link_options(tests PRIVATE $<$<AND:$<CONFIG:RELEASE>,${IS_NOT_MSVC}>:-s>)
