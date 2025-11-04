@@ -1,3 +1,7 @@
+![Ubuntu](https://github.com/pfeatherstone/msgpack_cpp/actions/workflows/ubuntu.yml/badge.svg)
+![MacOS](https://github.com/pfeatherstone/msgpack_cpp/actions/workflows/macos.yml/badge.svg)
+![Windows](https://github.com/pfeatherstone/msgpack_cpp/actions/workflows/windows.yml/badge.svg)
+
 # msgpack_cpp
 C++ header-only msgpack library using kiss principle
 

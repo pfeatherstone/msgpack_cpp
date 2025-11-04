@@ -26,4 +26,4 @@ jobs:
           cmake --build build --parallel
 
       - name: Run Unit Tests
-        run: ./build/test
+        run: ./build/tests

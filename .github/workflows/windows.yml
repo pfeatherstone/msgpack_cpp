@@ -25,4 +25,4 @@ jobs:
           cmake --build build --config RelWithDebInfo --parallel
 
       - name: Run Unit Tests
-        run: build\RelWithDebInfo\test.exe
+        run: build\RelWithDebInfo\tests.exe
