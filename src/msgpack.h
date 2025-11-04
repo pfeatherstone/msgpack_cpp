@@ -143,6 +143,9 @@ namespace msgpackcpp
 //----------------------------------------------------------------------------------------------------------------
 
     template<class Stream>
+    void serialize(Stream& out, std::nullptr_t);
+
+    template<class Stream>
     void serialize(Stream& out, bool v);
 
     template<class Source>
@@ -355,14 +358,30 @@ namespace msgpackcpp
 
     enum msgpack_identifier : uint8_t
     {
+        MSGPACK_NIL         = 0xc0,
         MSGPACK_FALSE       = 0xc2,
         MSGPACK_TRUE        = 0xc3,
         MSGPACK_FIXINT_POS  = 0x7f,
+        MSGPACK_F32         = 0xca,
+        MSGPACK_F64         = 0xcb,
         MSGPACK_U8          = 0xcc,
-        MSGPACK_U16         = 0xcd
+        MSGPACK_U16         = 0xcd,
+        MSGPACK_U32         = 0xce,
+        MSGPACK_U64         = 0xcf,
+        MSGPACK_I8          = 0xd0,
+        MSGPACK_I16         = 0xd1,
+        MSGPACK_I32         = 0xd2,
+        MSGPACK_I64         = 0xd3
     };
-
+    
 //----------------------------------------------------------------------------------------------------------------
+
+    template<class Stream>
+    inline void serialize(Stream& out, std::nullptr_t)
+    {
+        constexpr uint8_t format = MSGPACK_NIL;
+        out((const char*)&format, 1);  
+    }
 
     template<class Stream>
     inline void serialize(Stream& out, bool v)
@@ -411,7 +430,7 @@ namespace msgpackcpp
         else if (v <= std::numeric_limits<uint32_t>::max())
         {
             // unsigned 32
-            constexpr uint8_t format = 0xce;
+            constexpr uint8_t format = MSGPACK_U32;
             const     uint32_t v32   = host_to_b32(static_cast<uint32_t>(v));
             out((const char*)&format, 1);
             out((const char*)&v32, 4);
@@ -419,7 +438,7 @@ namespace msgpackcpp
         else
         {
             // unsigned 64
-            constexpr uint8_t format = 0xcf;
+            constexpr uint8_t format = MSGPACK_U64;
             const     uint64_t v64   = host_to_b64(static_cast<uint64_t>(v));
             out((const char*)&format, 1);
             out((const char*)&v64, 8);
@@ -444,7 +463,7 @@ namespace msgpackcpp
         else if (v >= std::numeric_limits<int8_t>::min())
         {
             // negative - int8
-            constexpr uint8_t format = 0xd0;
+            constexpr uint8_t format = MSGPACK_I8;
             const     int8_t  v8     = static_cast<int8_t>(v);
             out((const char*)&format, 1);
             out((const char*)&v8, 1);
@@ -452,7 +471,7 @@ namespace msgpackcpp
         else if (v >= std::numeric_limits<int16_t>::min())
         {
             // negative - int16
-            constexpr uint8_t format = 0xd1;
+            constexpr uint8_t format = MSGPACK_I16;
             const     uint16_t v16   = host_to_b16(bit_cast<uint16_t>(static_cast<int16_t>(v)));
             out((const char*)&format, 1);
             out((const char*)&v16, 2);
@@ -460,7 +479,7 @@ namespace msgpackcpp
         else if (v >= std::numeric_limits<int32_t>::min())
         {
             // negative - int32_t
-            constexpr uint8_t format = 0xd2;
+            constexpr uint8_t format = MSGPACK_I32;
             const     uint32_t v32   = host_to_b32(bit_cast<uint32_t>(static_cast<int32_t>(v)));
             out((const char*)&format, 1);
             out((const char*)&v32, 4);
@@ -468,7 +487,7 @@ namespace msgpackcpp
         else
         {
             // negative - int64_T
-            constexpr uint8_t format = 0xd3;
+            constexpr uint8_t format = MSGPACK_I64;
             const     uint64_t v64   = host_to_b64(bit_cast<uint64_t>(static_cast<int64_t>(v)));
             out((const char*)&format, 1);
             out((const char*)&v64, 8);
@@ -481,7 +500,7 @@ namespace msgpackcpp
         uint8_t format{};
         in((char*)&format, 1);
 
-        if (format <= 0x7f)
+        if (format <= MSGPACK_FIXINT_POS)
         {
             // positive fixint (7-bit positive integer)
             v = format;
@@ -491,56 +510,56 @@ namespace msgpackcpp
             // negative fixing (5-bit negative integer)
             v = bit_cast<int8_t>(format);
         }
-        else if (format == 0xcc)
+        else if (format == MSGPACK_U8)
         {
             // unsigned 8
             uint8_t tmp{};
             in((char*)&tmp, 1);
             v = tmp;
         }
-        else if (format == 0xcd)
+        else if (format == MSGPACK_U16)
         {
             // unsigned 16
             uint16_t tmp{};
             in((char*)&tmp, 2);
             v = host_to_b16(tmp);
         }
-        else if (format == 0xce)
+        else if (format == MSGPACK_U32)
         {
             // unsigned 32
             uint32_t tmp{};
             in((char*)&tmp, 4);
             v = host_to_b32(tmp);
         }
-        else if (format == 0xcf)
+        else if (format == MSGPACK_U64)
         {
             // unsigned 64
             uint64_t tmp{};
             in((char*)&tmp, 8);
             v = host_to_b64(tmp);
         }
-        else if (format == 0xd0)
+        else if (format == MSGPACK_I8)
         {
             // signed 8
             int8_t tmp{};
             in((char*)&tmp, 1);
             v = tmp;
         }
-        else if (format == 0xd1)
+        else if (format == MSGPACK_I16)
         {
             // signed 16
             uint16_t tmp{};
             in((char*)&tmp, 2);
             v = bit_cast<int16_t>(host_to_b16(tmp));
         }
-        else if (format == 0xd2)
+        else if (format == MSGPACK_I32)
         {
             // signed 32
             uint32_t tmp{};
             in((char*)&tmp, 4);
             v = bit_cast<int32_t>(host_to_b32(tmp));
         }
-        else if (format == 0xd3)
+        else if (format == MSGPACK_I64)
         {
             // signed 64
             uint64_t tmp{};
@@ -556,7 +575,7 @@ namespace msgpackcpp
     template<class Stream>
     inline void serialize(Stream& out, float v)
     {
-        constexpr uint8_t  format   = 0xca;
+        constexpr uint8_t  format   = MSGPACK_F32;
         const     uint32_t tmp      = host_to_b32(bit_cast<uint32_t>(v)); 
         out((const char*)&format, 1);
         out((const char*)&tmp, 4);
@@ -565,7 +584,7 @@ namespace msgpackcpp
     template<class Stream>
     inline void serialize(Stream& out, double v)
     {
-        constexpr uint8_t  format   = 0xcb;
+        constexpr uint8_t  format   = MSGPACK_F64;
         const     uint64_t tmp      = host_to_b64(bit_cast<uint64_t>(v)); 
         out((const char*)&format, 1);
         out((const char*)&tmp, 8);
@@ -577,13 +596,13 @@ namespace msgpackcpp
         uint8_t format{};
         in((char*)&format, 1);
 
-        if (format == 0xca)
+        if (format == MSGPACK_F32)
         {
             uint32_t tmp{};
             in((char*)&tmp, 4);
             v = bit_cast<float>(host_to_b32(tmp));
         }
-        else if (format == 0xcb)
+        else if (format == MSGPACK_F64)
         {
             uint64_t tmp{};
             in((char*)&tmp, 8);
