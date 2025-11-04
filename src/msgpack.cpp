@@ -1,0 +1,126 @@
+#include <algorithm>
+#include "msgpack.h"
+
+namespace msgpackcpp
+{
+
+//----------------------------------------------------------------------------------------------------------------
+
+    template<class... Ts>
+    struct overloaded : Ts... { using Ts::operator()...; };
+    template<class... Ts>
+    overloaded(Ts...) -> overloaded<Ts...>;
+
+//----------------------------------------------------------------------------------------------------------------
+
+    value::value(std::nullptr_t)        : val{nullptr} {}
+    value::value(bool v)                : val{v} {}
+    value::value(const char* v)         : val(std::string(v)) {}
+    value::value(std::string_view v)    : val(std::string(v)) {}
+    value::value(std::string v)         : val{std::move(v)} {}
+    value::value(std::vector<value> v)  : val{std::move(v)} {}
+    value::value(std::map<std::string, value> v) : val{std::move(v)} {}
+
+    value::value(std::initializer_list<value> v)
+    {
+        const bool is_object = std::all_of(begin(v), end(v), [](const auto& el) {
+            return el.is_array() && el.size() == 2 && el[0].is_str();
+        });
+
+        if (is_object)
+        {
+            auto& map = val.emplace<std::map<std::string, value>>();
+            for (const auto& el : v)
+                map.emplace(el[0].as_str(), el[1]);
+        }
+        else
+            val.emplace<std::vector<value>>(v);
+    }
+
+//----------------------------------------------------------------------------------------------------------------
+    
+    size_t value::size() const noexcept
+    {
+        return std::visit(overloaded{
+            [&](const std::vector<value>& v)            {return v.size();},
+            [&](const std::map<std::string, value>& v)  {return v.size();},
+            [&](std::nullptr_t)                         {return (size_t)0;},
+            [&](const auto&)                            {return (size_t)1;}
+        }, val);
+    }
+
+//----------------------------------------------------------------------------------------------------------------
+ 
+    bool value::is_null()   const noexcept {return std::holds_alternative<std::nullptr_t>(val);}
+    bool value::is_bool()   const noexcept {return std::holds_alternative<bool>(val);}
+    bool value::is_int()    const noexcept {return std::holds_alternative<int64_t>(val) || std::holds_alternative<uint64_t>(val);}
+    bool value::is_real()   const noexcept {return std::holds_alternative<double>(val);}
+    bool value::is_str()    const noexcept {return std::holds_alternative<std::string>(val);}
+    bool value::is_array()  const noexcept {return std::holds_alternative<std::vector<value>>(val);}
+    bool value::is_object() const noexcept {return std::holds_alternative<std::map<std::string, value>>(val);}
+
+//----------------------------------------------------------------------------------------------------------------
+
+    auto value::as_bool()      const -> bool                        {return std::get<bool>(val);}
+    auto value::as_bool()            -> bool&                       {return std::get<bool>(val);}
+    auto value::as_int64()     const -> int64_t                     {return std::get<int64_t>(val);}
+    auto value::as_int64()           -> int64_t&                    {return std::get<int64_t>(val);}
+    auto value::as_uint64()    const -> uint64_t                    {return std::get<uint64_t>(val);}
+    auto value::as_uint64()          -> uint64_t&                   {return std::get<uint64_t>(val);}
+    auto value::as_real()      const -> double                      {return std::get<double>(val);}
+    auto value::as_real()            -> double&                     {return std::get<double>(val);}
+    auto value::as_str()       const -> const std::string&          {return std::get<std::string>(val);}
+    auto value::as_str()             -> std::string&                {return std::get<std::string>(val);}
+    auto value::as_array()     const -> const std::vector<value>&   {return std::get<std::vector<value>>(val);}
+    auto value::as_array()           -> std::vector<value>&         {return std::get<std::vector<value>>(val);}
+    auto value::as_object()    const -> const std::map<std::string, value>& {return std::get<std::map<std::string, value>>(val);}
+    auto value::as_object()          -> std::map<std::string, value>&       {return std::get<std::map<std::string, value>>(val);}
+
+//----------------------------------------------------------------------------------------------------------------
+
+    const value& value::at(const std::string& key) const { return std::get<std::map<std::string, value>>(val).at(key); }
+    value&       value::at(const std::string& key)       { return std::get<std::map<std::string, value>>(val).at(key); }  
+
+    value& value::operator[](const std::string& key)
+    {
+        if (!std::holds_alternative<std::map<std::string, value>>(val))
+            val.emplace<std::map<std::string, value>>();
+        return std::get<std::map<std::string, value>>(val)[key];
+    }
+
+//----------------------------------------------------------------------------------------------------------------
+
+    const value& value::operator[](size_t array_index) const { return std::get<std::vector<value>>(val)[array_index]; }
+    value&       value::operator[](size_t array_index)       { return std::get<std::vector<value>>(val)[array_index]; }
+
+//----------------------------------------------------------------------------------------------------------------
+
+    struct deserialization_error_category : std::error_category
+    {
+        const char* name() const noexcept override 
+        {
+            return "msgpack deserialization";
+        }
+
+        std::string message(int ev) const override
+        {
+            switch(static_cast<deserialization_error>(ev))
+            {
+            case OUT_OF_DATA: return "Ran out of data while deserializing";
+            case BAD_FORMAT:  return "Found bad format";
+            case BAD_SIZE:    return "Found bad size";
+            case BAD_NAME:    return "Found bad name";
+            default:          return "Unrecognised error";
+            }
+        }
+    };
+
+    std::error_code make_error_code(deserialization_error ec)
+    {
+        static const deserialization_error_category singleton;
+        return {static_cast<int>(ec), singleton};
+    }
+
+//----------------------------------------------------------------------------------------------------------------
+
+}
