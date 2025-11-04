@@ -118,7 +118,7 @@ TEST_SUITE("[VALUE]")
 
         std::vector<char> buf0;
         auto out0 = sink(buf0);
-        value::pack(out0, jv1);
+        jv1.pack(out0);
         // auto in0 = source(buf0);
 
         // value jv2 = value::unpack(in0);

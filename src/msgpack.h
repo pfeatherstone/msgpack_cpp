@@ -132,8 +132,9 @@ namespace msgpackcpp
         const value& operator[](size_t array_index) const;
         value&       operator[](size_t array_index);
 
-        static void  pack(sink_base& out, const value& jv);
-        static value unpack(source_base& in); 
+        void pack(sink_base& out) const;
+        void unpack(source_base& in);
+        static value unpack_static(source_base& in);
     };
     
 //----------------------------------------------------------------------------------------------------------------
@@ -519,7 +520,7 @@ namespace msgpackcpp
             // positive fixint (7-bit positive integer)
             v = format;
         }
-        else if ((format & 0b11100000) == 0b11100000)
+        else if ((format & 0b11100000) == MSGPACK_FIXINT_NEG)
         {
             // negative fixing (5-bit negative integer)
             v = bit_cast<int8_t>(format);

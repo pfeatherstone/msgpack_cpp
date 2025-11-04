@@ -123,7 +123,7 @@ namespace msgpackcpp
 
 //----------------------------------------------------------------------------------------------------------------
 
-    void value::pack(sink_base& out, const value& jv)
+    void value::pack(sink_base& out) const
     {
         std::visit(overloaded{
             [&](std::nullptr_t) {
@@ -132,33 +132,67 @@ namespace msgpackcpp
             [&](const std::vector<value>& v) {
                 serialize_array_size(out, v.size());
                 for (const auto& el : v)
-                    value::pack(out, el);
+                    el.pack(out);
             },
             [&](const std::map<std::string, value>& m) {
                 serialize_map_size(out, m.size());
                 for (const auto& [k,v] : m)
                 {
                     serialize(out, k);
-                    value::pack(out, v);
+                    v.pack(out);
                 }
             },
             [&](const auto& v) {
                 serialize(out, v);
             }
-        }, jv.val);
+        }, val);
     }
 
-    // value value::unpack(source_base& in)
-    // {
-    //     value jv;
+    void value::unpack(source_base& in)
+    {
+        while (in.remaining()) 
+        {
+            const uint8_t format = in.peak();
+            
+            if (format == MSGPACK_NIL)
+            {
+                deserialize(in, nullptr);
+            }
+            else if (format == MSGPACK_FALSE || format == MSGPACK_TRUE)
+            {
+                bool v{};
+                deserialize(in, v);
+                val = v;
+            }
+            else if (format == MSGPACK_F32 || format == MSGPACK_F64)
+            {
+                double v{};
+                deserialize(in, v);
+                val = v;
+            }
+            else if (format < MSGPACK_FIXINT_POS || format == MSGPACK_U8 || format == MSGPACK_U16 || format == MSGPACK_U32 || format == MSGPACK_U64)
+            {
+                uint64_t v{};
+                deserialize(in, v);
+                val = v;
+            }
+            else if ((format & 0b11100000) == MSGPACK_FIXINT_NEG || format == MSGPACK_I8 || format == MSGPACK_I16 || format == MSGPACK_I32 || format == MSGPACK_I64)
+            {
+                int64_t v{};
+                deserialize(in, v);
+                val = v;
+            }
+            else
+                throw std::system_error(BAD_FORMAT);
+        }
+    }
 
-    //     while (in.remaining()) 
-    //     {
-
-    //     }
-
-    //     return jv;
-    // }
+    value value::unpack_static(source_base& in)
+    {
+        value jv;
+        jv.unpack(in);
+        return jv;
+    }
 
 //----------------------------------------------------------------------------------------------------------------
 
