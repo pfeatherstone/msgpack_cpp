@@ -239,16 +239,7 @@ namespace msgpackcpp
         class Compare = std::less<K>,
         class Alloc = std::allocator<std::pair<const K, V>>
     >
-    inline void serialize(Stream& out, const std::map<K,V,Compare,Alloc>& map)
-    {
-        serialize_map_size(out, map.size());
-        
-        for (const auto& [k,v] : map)
-        {
-            serialize(out, k);
-            serialize(out, v);
-        }
-    }
+    void serialize(Stream& out, const std::map<K,V,Compare,Alloc>& map);
 
     template <
         class Source, 
@@ -257,20 +248,7 @@ namespace msgpackcpp
         class Compare = std::less<K>,
         class Alloc = std::allocator<std::pair<const K, V>>
     >
-    inline void deserialize(Source& in, std::map<K,V,Compare,Alloc>& map)
-    {
-        uint32_t size{};
-        deserialize_map_size(in, size);
-        
-        for (uint32_t i = 0 ; i < size ; ++i)
-        {
-            K key{};
-            V val{};
-            deserialize(in, key);
-            deserialize(in, val);
-            map.emplace(std::make_pair(key, val));
-        }
-    }
+    void deserialize(Source& in, std::map<K,V,Compare,Alloc>& map);
 
     template <
         class Stream, 
@@ -280,16 +258,7 @@ namespace msgpackcpp
         class KeyEqual  = std::equal_to<K>,
         class Alloc     = std::allocator<std::pair<const K, V>>
     >
-    inline void serialize(Stream& out, const std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map)
-    {
-        serialize_map_size(out, map.size());
-        
-        for (const auto& [k,v] : map)
-        {
-            serialize(out, k);
-            serialize(out, v);
-        }
-    }
+    void serialize(Stream& out, const std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map);
 
     template <
         class Source, 
@@ -299,46 +268,15 @@ namespace msgpackcpp
         class KeyEqual  = std::equal_to<K>,
         class Alloc     = std::allocator<std::pair<const K, V>>
     >
-    inline void deserialize(Source& in, std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map)
-    {
-        uint32_t size{};
-        deserialize_map_size(in, size);
-        
-        for (uint32_t i = 0 ; i < size ; ++i)
-        {
-            K key{};
-            V val{};
-            deserialize(in, key);
-            deserialize(in, val);
-            map.emplace(std::make_pair(key, val));
-        }
-    }
+    void deserialize(Source& in, std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map);
 
-    /////////////////////////////////////////////////////////////////////////////////
-    /// Tuple
-    /////////////////////////////////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------
 
     template<class Stream, class... Args>
-    inline void serialize(Stream& out, const std::tuple<Args...>& tpl)
-    {
-        serialize_array_size(out, sizeof...(Args));
-        std::apply([&](auto&&... args) {
-            (serialize(out, std::forward<decltype(args)>(args)),...);
-        }, tpl);
-    }
-
+    void serialize(Stream& out, const std::tuple<Args...>& tpl);
+    
     template<class Source, class... Args>
-    inline void deserialize(Source& in, std::tuple<Args...>& tpl)
-    {
-        uint32_t size{};
-        deserialize_array_size(in, size);
-        if (size != sizeof...(Args))
-            throw std::system_error(BAD_SIZE);
-
-        std::apply([&](auto&&... args) {
-            (deserialize(in, std::forward<decltype(args)>(args)),...);
-        }, tpl);
-    }
+    void deserialize(Source& in, std::tuple<Args...>& tpl);
 
 //----------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------
@@ -955,6 +893,112 @@ namespace msgpackcpp
         }
         else
             throw std::system_error(BAD_FORMAT);
+    }
+
+     template <
+        class Stream, 
+        class K, 
+        class V, 
+        class Compare,
+        class Alloc
+    >
+    inline void serialize(Stream& out, const std::map<K,V,Compare,Alloc>& map)
+    {
+        serialize_map_size(out, map.size());
+        
+        for (const auto& [k,v] : map)
+        {
+            serialize(out, k);
+            serialize(out, v);
+        }
+    }
+
+    template <
+        class Source, 
+        class K, 
+        class V, 
+        class Compare,
+        class Alloc
+    >
+    inline void deserialize(Source& in, std::map<K,V,Compare,Alloc>& map)
+    {
+        uint32_t size{};
+        deserialize_map_size(in, size);
+        
+        for (uint32_t i = 0 ; i < size ; ++i)
+        {
+            K key{};
+            V val{};
+            deserialize(in, key);
+            deserialize(in, val);
+            map.emplace(std::make_pair(key, val));
+        }
+    }
+
+    template <
+        class Stream, 
+        class K,
+        class V,
+        class Hash,
+        class KeyEqual,
+        class Alloc
+    >
+    inline void serialize(Stream& out, const std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map)
+    {
+        serialize_map_size(out, map.size());
+        
+        for (const auto& [k,v] : map)
+        {
+            serialize(out, k);
+            serialize(out, v);
+        }
+    }
+
+    template <
+        class Source, 
+        class K,
+        class V,
+        class Hash,
+        class KeyEqual,
+        class Alloc
+    >
+    inline void deserialize(Source& in, std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map)
+    {
+        uint32_t size{};
+        deserialize_map_size(in, size);
+        
+        for (uint32_t i = 0 ; i < size ; ++i)
+        {
+            K key{};
+            V val{};
+            deserialize(in, key);
+            deserialize(in, val);
+            map.emplace(std::make_pair(key, val));
+        }
+    }
+
+//----------------------------------------------------------------------------------------------------------------
+
+    template<class Stream, class... Args>
+    inline void serialize(Stream& out, const std::tuple<Args...>& tpl)
+    {
+        serialize_array_size(out, sizeof...(Args));
+        std::apply([&](auto&&... args) {
+            (serialize(out, std::forward<decltype(args)>(args)),...);
+        }, tpl);
+    }
+
+    template<class Source, class... Args>
+    inline void deserialize(Source& in, std::tuple<Args...>& tpl)
+    {
+        uint32_t size{};
+        deserialize_array_size(in, size);
+        if (size != sizeof...(Args))
+            throw std::system_error(BAD_SIZE);
+
+        std::apply([&](auto&&... args) {
+            (deserialize(in, std::forward<decltype(args)>(args)),...);
+        }, tpl);
     }
 
 //----------------------------------------------------------------------------------------------------------------
