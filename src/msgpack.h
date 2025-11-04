@@ -23,6 +23,45 @@ namespace msgpackcpp
 
 //----------------------------------------------------------------------------------------------------------------
 
+    struct sink_base
+    {
+        virtual void write(const char* data, size_t nbytes) = 0;
+    };
+
+    struct source_base
+    {
+        virtual void    read(char* buf, size_t nbytes)  = 0;
+        virtual uint8_t peak()                          = 0;
+        virtual size_t  remaining() const               = 0;
+    };
+
+//----------------------------------------------------------------------------------------------------------------
+
+    enum deserialization_error
+    {
+        OUT_OF_DATA = 1,
+        BAD_FORMAT  = 2,
+        BAD_SIZE    = 3,
+        BAD_NAME    = 4
+    };
+
+    std::error_code make_error_code(deserialization_error ec);
+
+//----------------------------------------------------------------------------------------------------------------
+
+}
+
+namespace std
+{
+    template <>
+    struct is_error_code_enum<msgpackcpp::deserialization_error> : true_type {};
+}
+
+namespace msgpackcpp
+{
+
+//----------------------------------------------------------------------------------------------------------------
+
     class value
     {
     private:
@@ -92,48 +131,9 @@ namespace msgpackcpp
 
         const value& operator[](size_t array_index) const;
         value&       operator[](size_t array_index);
-    };
 
-//----------------------------------------------------------------------------------------------------------------
-
-    enum deserialization_error
-    {
-        OUT_OF_DATA = 1,
-        BAD_FORMAT  = 2,
-        BAD_SIZE    = 3,
-        BAD_NAME    = 4
-    };
-
-    std::error_code make_error_code(deserialization_error ec);
-
-//----------------------------------------------------------------------------------------------------------------
-
-}
-
-//----------------------------------------------------------------------------------------------------------------
-
-namespace std
-{
-    template <>
-    struct is_error_code_enum<msgpackcpp::deserialization_error> : true_type {};
-}
-
-//----------------------------------------------------------------------------------------------------------------
-
-namespace msgpackcpp
-{
-
-//----------------------------------------------------------------------------------------------------------------
-
-    struct sink_base
-    {
-        virtual void write(const char* data, size_t nbytes) = 0;
-    };
-
-    struct source_base
-    {
-        virtual void    read(char* buf, size_t nbytes)  = 0;
-        virtual uint8_t peak()                          = 0;
+        static void  pack(sink_base& out, const value& jv);
+        static value unpack(source_base& in); 
     };
     
 //----------------------------------------------------------------------------------------------------------------
@@ -274,11 +274,6 @@ namespace msgpackcpp
     template<class... Args>
     void deserialize(source_base& in, std::tuple<Args...>& tpl);
 
-//----------------------------------------------------------------------------------------------------------------
-
-    void serialize_from_value(sink_base& out, const value& jv);
-    auto deserialize_to_value(source_base& in) -> value;
-    
 //----------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------
 // DEFINITIONS

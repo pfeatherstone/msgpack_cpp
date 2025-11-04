@@ -46,6 +46,11 @@ namespace msgpackcpp
         {
             return static_cast<uint8_t>(data[offset]);
         }
+
+        size_t remaining() const override
+        {
+            return data.size() - offset;
+        }
     };
 
     template<class Byte, class Alloc, std::enable_if_t<is_byte<Byte>, bool> = true>
@@ -89,6 +94,15 @@ namespace msgpackcpp
             if (!in || !in.good() || in.eof())
                 throw std::system_error(OUT_OF_DATA);
             return b;
+        }
+
+        size_t remaining() const override
+        {
+            const auto pos = in.tellg();
+            in.seekg(0, std::ios::end );
+            const auto len = in.tellg() - pos;
+            in.seekg( pos );
+            return len;
         }
     };
 

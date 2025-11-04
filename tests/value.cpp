@@ -1,9 +1,42 @@
 #include "doctest.h"
 #include "msgpack.h"
+#include "msgpack_sinks.h"
 
 using namespace std;
 using namespace std::literals::string_view_literals;
 using namespace msgpackcpp;
+
+value niels_data()
+{
+    return {
+        {"pi", 3.141},
+        {"happy", true},
+        {"name", "Niels"},
+        {"nothing", nullptr},
+        {"answer", {
+            {"everything", 42}
+        }},
+        {"list", {1, 0, 2}},
+        {"object", {
+            {"currency", "USD"},
+            {"value", 42.99}
+        }}
+    };
+}
+
+void check_niels(value& jv)
+{
+    REQUIRE(jv.is_object());
+    REQUIRE(jv.size() == 7);
+    REQUIRE(jv.at("pi").as_real() == 3.141);
+    REQUIRE(jv.at("happy").as_bool() == true);
+    REQUIRE(jv.at("name").as_str() == "Niels");
+    REQUIRE(jv.at("nothing").is_null());
+    REQUIRE(jv.at("answer").at("everything").as_int64() == 42);
+    REQUIRE(jv.at("list").as_array().size() == 3);
+    REQUIRE(jv.at("object").at("currency").as_str() == "USD");
+    REQUIRE(jv.at("object").at("value").as_real() == 42.99);
+}
 
 TEST_SUITE("[VALUE]") 
 {
@@ -74,35 +107,21 @@ TEST_SUITE("[VALUE]")
             REQUIRE(el.size() == 2);
         }
 
-        jv = {
-            {"pi", 3.141},
-            {"happy", true},
-            {"name", "Niels"},
-            {"nothing", nullptr},
-            {"answer", {
-                {"everything", 42}
-            }},
-            {"list", {1, 0, 2}},
-            {"object", {
-                {"currency", "USD"},
-                {"value", 42.99}
-            }}
-        };
-
-        const auto check_niels = [](value& jv)
-        {
-            REQUIRE(jv.is_object());
-            REQUIRE(jv.size() == 7);
-            REQUIRE(jv.at("pi").as_real() == 3.141);
-            REQUIRE(jv.at("happy").as_bool() == true);
-            REQUIRE(jv.at("name").as_str() == "Niels");
-            REQUIRE(jv.at("nothing").is_null());
-            REQUIRE(jv.at("answer").at("everything").as_int64() == 42);
-            REQUIRE(jv.at("list").as_array().size() == 3);
-            REQUIRE(jv.at("object").at("currency").as_str() == "USD");
-            REQUIRE(jv.at("object").at("value").as_real() == 42.99);
-        };
-
+        jv = niels_data();
         check_niels(jv);
     }
+
+    TEST_CASE("serialize")
+    {
+        value jv1 = niels_data();
+        check_niels(jv1);
+
+        std::vector<char> buf0;
+        auto out0 = sink(buf0);
+        value::pack(out0, jv1);
+        // auto in0 = source(buf0);
+
+        // value jv2 = value::unpack(in0);
+        // check_niels(jv2);
+    } 
 }

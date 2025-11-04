@@ -208,6 +208,7 @@ TEST_SUITE("[PACK]")
                 REQUIRE(h == hh);
                 REQUIRE(i == ii);
                 REQUIRE(j == jj);
+                REQUIRE(in.remaining() == 0);
             }
 
             buf1.clear();
@@ -349,6 +350,7 @@ TEST_SUITE("[PACK]")
             REQUIRE(num_errors(w, ww) == 0);
             REQUIRE(num_errors(x, xx) == 0);
             REQUIRE(num_errors(y, yy) == 0);
+            REQUIRE(in.remaining() == 0);
         }
     }
 

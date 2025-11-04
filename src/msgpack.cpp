@@ -123,4 +123,43 @@ namespace msgpackcpp
 
 //----------------------------------------------------------------------------------------------------------------
 
+    void value::pack(sink_base& out, const value& jv)
+    {
+        std::visit(overloaded{
+            [&](std::nullptr_t) {
+                serialize(out, nullptr);
+            },
+            [&](const std::vector<value>& v) {
+                serialize_array_size(out, v.size());
+                for (const auto& el : v)
+                    value::pack(out, el);
+            },
+            [&](const std::map<std::string, value>& m) {
+                serialize_map_size(out, m.size());
+                for (const auto& [k,v] : m)
+                {
+                    serialize(out, k);
+                    value::pack(out, v);
+                }
+            },
+            [&](const auto& v) {
+                serialize(out, v);
+            }
+        }, jv.val);
+    }
+
+    // value value::unpack(source_base& in)
+    // {
+    //     value jv;
+
+    //     while (in.remaining()) 
+    //     {
+
+    //     }
+
+    //     return jv;
+    // }
+
+//----------------------------------------------------------------------------------------------------------------
+
 }
