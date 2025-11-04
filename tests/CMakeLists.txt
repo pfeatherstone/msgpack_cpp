@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.13)
 project(MsgPackTests)
 
-# Boost
+# Deps
 include(FetchContent)
+
 set(BOOST_INCLUDE_LIBRARIES describe)
 set(BOOST_ENABLE_CMAKE ON)
 FetchContent_Declare(
@@ -11,14 +12,23 @@ FetchContent_Declare(
   URL_HASH MD5=537da0e22b31b8b7185cc44fdde70458
   DOWNLOAD_EXTRACT_TIMESTAMP true
 )
-FetchContent_MakeAvailable(Boost)
+
+set(MSGPACK_USE_BOOST OFF CACHE INTERNAL "Disabling boost in msgpack library")
+FetchContent_Declare(
+  msgpack
+  GIT_REPOSITORY https://github.com/msgpack/msgpack-c.git
+  GIT_TAG        cpp_master
+)
+
+FetchContent_MakeAvailable(Boost msgpack)
 
 # Unit tests
 add_executable(tests
+  ${CMAKE_CURRENT_SOURCE_DIR}/../src/msgpack.cpp
   main.cpp
   value.cpp
   pack.cpp)
 target_compile_features(tests PRIVATE cxx_std_17)
 target_compile_options(tests PRIVATE -Wall -Wextra)
-target_include_directories(tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
-target_link_libraries(tests  PRIVATE Boost::describe)
+target_include_directories(tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+target_link_libraries(tests  PRIVATE Boost::describe PRIVATE msgpack-cxx)
