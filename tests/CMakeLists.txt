@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.13)
 project(MsgPackTests)
 
+# Helpers
+set(IS_MSVC       "$<CXX_COMPILER_ID:MSVC>")
+set(IS_NOT_MSVC   "$<NOT:${IS_MSVC}>")
+
 # Deps
 include(FetchContent)
 
@@ -29,6 +33,7 @@ add_executable(tests
   value.cpp
   pack.cpp)
 target_compile_features(tests PRIVATE cxx_std_17)
-target_compile_options(tests PRIVATE -Wall -Wextra)
+target_compile_options(tests PRIVATE $<${IS_NOT_MSVC}:-Wall -Wextra -Wpedantic -Werror>)
+target_compile_options(tests PRIVATE $<${IS_MSVC}:/Wall /WX>)
 target_include_directories(tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 target_link_libraries(tests  PRIVATE Boost::describe PRIVATE msgpack-cxx)

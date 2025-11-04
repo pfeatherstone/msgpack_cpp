@@ -242,7 +242,7 @@ TEST_SUITE("[PACK]")
                                 "might refuse to come. What could he do then? Every moment was of vital"
                                 "importance.";
         std::string o(70000, 0);
-        std::generate(begin(o), end(o), [&]{return std::uniform_int_distribution<char>{}(eng);});
+        std::generate(begin(o), end(o), [&]{return std::uniform_int_distribution<int>{std::numeric_limits<char>::min(), std::numeric_limits<char>::max()}(eng);});
 
         std::vector<char>    p(255);
         std::vector<uint8_t> q(255);
