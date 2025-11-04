@@ -1,63 +1,107 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
+#include <type_traits>
 #include <limits>
 #include <utility>
-#include <type_traits>
+#include <algorithm>
+#include <string>
 #include <string_view>
+#include <tuple>
 #include <vector>
 #include <map>
 #include <unordered_map>
-#include <tuple>
-#include <cstring>
+#include <variant>
 #if __cpp_lib_bit_cast
 #include <bit>
 #endif
 #include <endian.h>
 #include "msgpack_error.h"
 
-
 namespace msgpackcpp
 {
-    /////////////////////////////////////////////////////////////////////////////////
-    /// Helpers
-    /////////////////////////////////////////////////////////////////////////////////
 
-#if __cpp_lib_bit_cast
-    using std::bit_cast;
-#else
-    template<class To, class From>
-    To bit_cast(const From& src) noexcept
+//----------------------------------------------------------------------------------------------------------------
+
+    class value
     {
-        To dst;
-        std::memcpy(&dst, &src, sizeof(To));
-        return dst;
-    }
-#endif
+    private:
+        std::variant<std::nullptr_t,
+                     bool,
+                     int64_t,
+                     uint64_t,
+                     double,
+                     std::string,
+                     std::vector<value>,
+                     std::map<std::string, value>> val;
 
-    /////////////////////////////////////////////////////////////////////////////////
-    /// BOOL
-    /////////////////////////////////////////////////////////////////////////////////
+    public:
+        value()                             = default;
+        value(const value& ori)             = default;
+        value(value&& ori)                  = default;
+        value& operator=(const value& ori)  = default;
+        value& operator=(value&& ori)       = default;
+
+        value(std::nullptr_t);
+        value(bool v);
+
+        template<class Int, std::enable_if_t<std::is_integral_v<Int> && std::is_signed_v<Int>, bool> = true>
+        value(Int v);
+
+        template<class UInt, std::enable_if_t<std::is_integral_v<UInt> && std::is_unsigned_v<UInt>, bool> = true>
+        value(UInt v);
+
+        template<class Real, std::enable_if_t<std::is_floating_point_v<Real>, bool> = true>
+        value(Real v);
+
+        value(const char* v);
+        value(std::string_view v);
+        value(std::string v);
+        value(std::vector<value> v);
+        value(std::map<std::string, value> v);
+        value(std::initializer_list<value> v);
+
+        size_t size() const noexcept;
+
+        bool is_null()      const noexcept;
+        bool is_bool()      const noexcept;
+        bool is_int()       const noexcept;
+        bool is_real()      const noexcept;
+        bool is_str()       const noexcept;
+        bool is_array()     const noexcept;
+        bool is_object()    const noexcept;
+
+        auto as_bool()      const -> bool;
+        auto as_bool()            -> bool&;
+        auto as_int64()     const -> int64_t;
+        auto as_int64()           -> int64_t&;
+        auto as_uint64()    const -> uint64_t;
+        auto as_uint64()          -> uint64_t&;
+        auto as_real()      const -> double;
+        auto as_real()            -> double&;
+        auto as_str()       const -> const std::string&;
+        auto as_str()             -> std::string&;
+        auto as_array()     const -> const std::vector<value>&;
+        auto as_array()           -> std::vector<value>&;
+        auto as_object()    const -> const std::map<std::string, value>&;
+        auto as_object()          -> std::map<std::string, value>&;
+
+        const value& at(const std::string& key) const;
+        value&       at(const std::string& key);
+        value&       operator[](const std::string& key);
+
+        const value& operator[](size_t array_index) const;
+        value&       operator[](size_t array_index);
+    };
+
+//----------------------------------------------------------------------------------------------------------------
 
     template<class Stream>
-    inline void serialize(Stream& out, bool v)
-    {
-        const uint8_t format = v ? 0xc3 : 0xc2;
-        out((const char*)&format, 1);  
-    }
+    void serialize(Stream& out, bool v);
 
     template<class Source>
-    inline void deserialize(Source& in, bool& v)
-    {
-        uint8_t tmp{};
-        in((char*)&tmp, 1);
-        if (tmp == 0xc2)
-            v = false;
-        else if (tmp == 0xc3)
-            v = true;
-        else
-            throw std::system_error(BAD_FORMAT);
-    }
+    void deserialize(Source& in, bool& v);
 
     /////////////////////////////////////////////////////////////////////////////////
     /// Unsigned integers
@@ -696,4 +740,248 @@ namespace msgpackcpp
             (deserialize(in, std::forward<decltype(args)>(args)),...);
         }, tpl);
     }
+
+//----------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------
+// DEFINITIONS
+//----------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------
+
+    namespace details
+    {
+
+//----------------------------------------------------------------------------------------------------------------
+
+        template<class... Ts>
+        struct overloaded : Ts... { using Ts::operator()...; };
+        template<class... Ts>
+        overloaded(Ts...) -> overloaded<Ts...>;
+
+//----------------------------------------------------------------------------------------------------------------
+
+#if __cpp_lib_bit_cast
+        using std::bit_cast;
+#else
+        template<class To, class From>
+        To bit_cast(const From& src) noexcept
+        {
+            To dst;
+            std::memcpy(&dst, &src, sizeof(To));
+            return dst;
+        }
+#endif
+
+//----------------------------------------------------------------------------------------------------------------
+
+        constexpr uint16_t byte_swap16(uint16_t v)
+        {
+            return static_cast<uint16_t>(((v & 0x00FF) << 8) | ((v & 0xFF00) >> 8));
+        }
+
+        constexpr uint64_t byte_swap32(uint32_t v)
+        {
+            return static_cast<uint32_t>(((v & 0x000000FFu) << 24) |
+                                         ((v & 0x0000FF00u) << 8)  |
+                                         ((v & 0x00FF0000u) >> 8)  |
+                                         ((v & 0xFF000000u) >> 24));
+        }
+
+        constexpr uint64_t byte_swap64(uint64_t v)
+        {
+            return static_cast<uint64_t>(((v & 0x00000000000000FFULL) << 56) |
+                                        ((v & 0x000000000000FF00ULL) << 40) |
+                                        ((v & 0x0000000000FF0000ULL) << 24) |
+                                        ((v & 0x00000000FF000000ULL) << 8)  |
+                                        ((v & 0x000000FF00000000ULL) >> 8)  |
+                                        ((v & 0x0000FF0000000000ULL) >> 24) |
+                                        ((v & 0x00FF000000000000ULL) >> 40) |
+                                        ((v & 0xFF00000000000000ULL) >> 56));
+        }
+
+        static_assert(byte_swap16(0x1234)               == 0x3412,              "bad swap");
+        static_assert(byte_swap32(0x12345678)           == 0x78563412,          "bad swap");
+        static_assert(byte_swap64(0x123456789abcdef1)   == 0xf1debc9a78563412,  "bad swap");
+        
+        inline bool is_little_endian() 
+        {
+            constexpr uint32_t v{0x01020304};
+            const auto*        ptr{reinterpret_cast<const unsigned char*>(&v)};
+            return ptr[0] == 0x04;
+        }
+
+//----------------------------------------------------------------------------------------------------------------
+
+        inline uint16_t host_to_b16(uint16_t v) { return is_little_endian() ? byte_swap16(v) : v; }
+        inline uint32_t host_to_b32(uint32_t v) { return is_little_endian() ? byte_swap32(v) : v; }
+        inline uint64_t host_to_b64(uint64_t v) { return is_little_endian() ? byte_swap64(v) : v; }
+
+//----------------------------------------------------------------------------------------------------------------
+
+    }
+    
+//----------------------------------------------------------------------------------------------------------------
+
+    inline value::value(std::nullptr_t)        : val{nullptr} {}
+    inline value::value(bool v)                : val{v} {}
+    inline value::value(const char* v)         : val(std::string(v)) {}
+    inline value::value(std::string_view v)    : val(std::string(v)) {}
+    inline value::value(std::string v)         : val{std::move(v)} {}
+    inline value::value(std::vector<value> v)  : val{std::move(v)} {}
+    inline value::value(std::map<std::string, value> v) : val{std::move(v)} {}
+
+    template<class Int, std::enable_if_t<std::is_integral_v<Int> && std::is_signed_v<Int>, bool>>
+    inline value::value(Int v) : val{static_cast<int64_t>(v)} {}
+
+    template<class UInt, std::enable_if_t<std::is_integral_v<UInt> && std::is_unsigned_v<UInt>, bool>>
+    inline value::value(UInt v) : val{static_cast<uint64_t>(v)} {}
+
+    template<class Real, std::enable_if_t<std::is_floating_point_v<Real>, bool>>
+    inline value::value(Real v) : val{static_cast<double>(v)} {}
+    
+    inline value::value(std::initializer_list<value> v)
+    {
+        const bool is_object = std::all_of(begin(v), end(v), [](const auto& el) {
+            return el.is_array() && el.size() == 2 && el[0].is_str();
+        });
+
+        if (is_object)
+        {
+            auto& map = val.emplace<std::map<std::string, value>>();
+            for (const auto& el : v)
+                map.emplace(el[0].as_str(), el[1]);
+        }
+        else
+            val.emplace<std::vector<value>>(v);
+    }
+
+//----------------------------------------------------------------------------------------------------------------
+
+    inline size_t value::size() const noexcept
+    {
+        return std::visit(details::overloaded{
+            [&](const std::vector<value>& v)            {return v.size();},
+            [&](const std::map<std::string, value>& v)  {return v.size();},
+            [&](std::nullptr_t)                         {return (size_t)0;},
+            [&](const auto&)                            {return (size_t)1;}
+        }, val);
+    }
+
+//----------------------------------------------------------------------------------------------------------------
+ 
+    inline bool value::is_null()   const noexcept {return std::holds_alternative<std::nullptr_t>(val);}
+    inline bool value::is_bool()   const noexcept {return std::holds_alternative<bool>(val);}
+    inline bool value::is_int()    const noexcept {return std::holds_alternative<int64_t>(val) || std::holds_alternative<uint64_t>(val);}
+    inline bool value::is_real()   const noexcept {return std::holds_alternative<double>(val);}
+    inline bool value::is_str()    const noexcept {return std::holds_alternative<std::string>(val);}
+    inline bool value::is_array()  const noexcept {return std::holds_alternative<std::vector<value>>(val);}
+    inline bool value::is_object() const noexcept {return std::holds_alternative<std::map<std::string, value>>(val);}
+
+//----------------------------------------------------------------------------------------------------------------
+
+    inline auto value::as_bool()      const -> bool                        {return std::get<bool>(val);}
+    inline auto value::as_bool()            -> bool&                       {return std::get<bool>(val);}
+    inline auto value::as_int64()     const -> int64_t                     {return std::get<int64_t>(val);}
+    inline auto value::as_int64()           -> int64_t&                    {return std::get<int64_t>(val);}
+    inline auto value::as_uint64()    const -> uint64_t                    {return std::get<uint64_t>(val);}
+    inline auto value::as_uint64()          -> uint64_t&                   {return std::get<uint64_t>(val);}
+    inline auto value::as_real()      const -> double                      {return std::get<double>(val);}
+    inline auto value::as_real()            -> double&                     {return std::get<double>(val);}
+    inline auto value::as_str()       const -> const std::string&          {return std::get<std::string>(val);}
+    inline auto value::as_str()             -> std::string&                {return std::get<std::string>(val);}
+    inline auto value::as_array()     const -> const std::vector<value>&   {return std::get<std::vector<value>>(val);}
+    inline auto value::as_array()           -> std::vector<value>&         {return std::get<std::vector<value>>(val);}
+    inline auto value::as_object()    const -> const std::map<std::string, value>& {return std::get<std::map<std::string, value>>(val);}
+    inline auto value::as_object()          -> std::map<std::string, value>&       {return std::get<std::map<std::string, value>>(val);}
+
+//----------------------------------------------------------------------------------------------------------------
+
+    inline const value& value::at(const std::string& key) const { return std::get<std::map<std::string, value>>(val).at(key); }
+    inline value&       value::at(const std::string& key)       { return std::get<std::map<std::string, value>>(val).at(key); }  
+
+    inline value& value::operator[](const std::string& key)
+    {
+        if (!std::holds_alternative<std::map<std::string, value>>(val))
+            val.emplace<std::map<std::string, value>>();
+        return std::get<std::map<std::string, value>>(val)[key];
+    }
+
+//----------------------------------------------------------------------------------------------------------------
+
+    inline const value& value::operator[](size_t array_index) const { return std::get<std::vector<value>>(val)[array_index]; }
+    inline value&       value::operator[](size_t array_index)       { return std::get<std::vector<value>>(val)[array_index]; }
+
+//----------------------------------------------------------------------------------------------------------------
+
+    enum msgpack_identifier : uint8_t
+    {
+        MSGPACK_FALSE = 0xc2,
+        MSGPACK_TRUE  = 0xc3
+    };
+
+    template<class Stream>
+    inline void serialize(Stream& out, bool v)
+    {
+        const uint8_t format = v ? MSGPACK_TRUE : MSGPACK_FALSE;
+        out((const char*)&format, 1);  
+    }
+
+    template<class Source>
+    inline void deserialize(Source& in, bool& v)
+    {
+        uint8_t tmp{};
+        in((char*)&tmp, 1);
+        if      (tmp == MSGPACK_FALSE) v = false;
+        else if (tmp == MSGPACK_TRUE)  v = true;
+        else throw std::system_error(BAD_FORMAT);
+    }
+
+//----------------------------------------------------------------------------------------------------------------
+
+    template<class Stream, class UInt, std::enable_if_t<std::is_integral_v<UInt> && std::is_unsigned_v<UInt>, bool>>
+    inline void serialize(Stream& out, UInt v)
+    {
+        using namespace details;
+
+        if (v <= 0x7f)
+        {
+            // positive fixint (7-bit positive integer)
+            const uint8_t v8 = static_cast<uint8_t>(v);
+            out((const char*)&v8, 1);
+        }
+        else if (v <= std::numeric_limits<uint8_t>::max())
+        {
+            // unsigned 8
+            constexpr uint8_t format = 0xcc;
+            const     uint8_t v8     = static_cast<uint8_t>(v);
+            out((const char*)&format, 1);
+            out((const char*)&v8, 1);
+        }
+        else if (v <= std::numeric_limits<uint16_t>::max())
+        {
+            // unsigned 16
+            constexpr uint8_t format = 0xcd;
+            const     uint16_t v16   = htobe16(static_cast<uint16_t>(v));
+            out((const char*)&format, 1);
+            out((const char*)&v16, 2);
+        }    
+        else if (v <= std::numeric_limits<uint32_t>::max())
+        {
+            // unsigned 32
+            constexpr uint8_t format = 0xce;
+            const     uint32_t v32   = htobe32(static_cast<uint32_t>(v));
+            out((const char*)&format, 1);
+            out((const char*)&v32, 4);
+        }
+        else
+        {
+            // unsigned 64
+            constexpr uint8_t format = 0xcf;
+            const     uint64_t v64   = htobe64(static_cast<uint64_t>(v));
+            out((const char*)&format, 1);
+            out((const char*)&v64, 8);
+        }
+    }
+
+//----------------------------------------------------------------------------------------------------------------
+
 }

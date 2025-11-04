@@ -4,12 +4,12 @@ project(Msgpack)
 # Dependencies for Unit tests and Bench tests
 include(FetchContent)
 
-set(BOOST_INCLUDE_LIBRARIES describe test)
+set(BOOST_INCLUDE_LIBRARIES describe)
 set(BOOST_ENABLE_CMAKE ON)
 FetchContent_Declare(
   Boost
-  URL "https://github.com/boostorg/boost/releases/download/boost-1.86.0/boost-1.86.0-cmake.tar.xz"
-  URL_HASH MD5=d02759931cedc02aded80402906c5eb6
+  URL "https://github.com/boostorg/boost/releases/download/boost-1.89.0/boost-1.89.0-cmake.tar.xz"
+  URL_HASH MD5=537da0e22b31b8b7185cc44fdde70458
   DOWNLOAD_EXTRACT_TIMESTAMP true
 )
 
