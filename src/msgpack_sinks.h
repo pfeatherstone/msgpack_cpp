@@ -62,19 +62,39 @@ namespace msgpackcpp
 
 //----------------------------------------------------------------------------------------------------------------
 
-    // inline auto sink(std::ostream& out)
-    // {
-    //     return [&](const char* bytes, size_t nbytes) {
-    //         out.write(bytes, nbytes);
-    //     };
-    // }
+    struct ostream_sink : sink_base
+    {
+        std::ostream& out;
 
-    // inline auto source(std::istream& in)
-    // {
-    //     return [&](char* bytes, size_t nbytes) {
-    //         in.read(bytes, nbytes);
-    //         if (in.gcount() != (long)nbytes)
-    //             throw std::system_error(OUT_OF_DATA);
-    //     };
-    // }
+        ostream_sink(std::ostream& out_) : out{out_}{}
+        void write(const char* data, size_t nbytes) override {out.write(data, nbytes);}
+    };
+
+    struct istream_source : source_base
+    {
+        std::istream& in;
+
+        istream_source(std::istream& in_) : in{in_}{}
+
+        void read(char* buf, size_t nbytes) override
+        {
+            in.read(buf, nbytes);
+            if (in.gcount() != (long)nbytes)
+                throw std::system_error(OUT_OF_DATA);
+        }
+
+        uint8_t peak() override
+        {
+            uint8_t b = static_cast<uint8_t>(in.peek());
+            if (!in || !in.good() || in.eof())
+                throw std::system_error(OUT_OF_DATA);
+            return b;
+        }
+    };
+
+    inline auto sink(std::ostream& out)  { return ostream_sink{out}; }
+    inline auto source(std::istream& in) { return istream_source{in}; }
+
+//----------------------------------------------------------------------------------------------------------------
+
 }
