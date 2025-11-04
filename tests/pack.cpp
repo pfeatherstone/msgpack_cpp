@@ -33,7 +33,10 @@ const auto num_errors = [](const auto& buf1, const auto& buf2)
 template<class Int, class Generator>
 Int random_int(Generator& gen)
 {
-    return std::uniform_int_distribution<Int>{std::numeric_limits<Int>::min(), std::numeric_limits<Int>::max()}(gen);
+    if constexpr(std::is_same_v<Int, char>)
+        return static_cast<char>(std::uniform_int_distribution<int>{std::numeric_limits<char>::min(), std::numeric_limits<char>::max()}(gen));
+    else
+        return std::uniform_int_distribution<Int>{std::numeric_limits<Int>::min(), std::numeric_limits<Int>::max()}(gen);
 }
 
 template<class Float, class Generator>
@@ -242,7 +245,7 @@ TEST_SUITE("[PACK]")
                                 "might refuse to come. What could he do then? Every moment was of vital"
                                 "importance.";
         std::string o(70000, 0);
-        std::generate(begin(o), end(o), [&]{return std::uniform_int_distribution<int>{std::numeric_limits<char>::min(), std::numeric_limits<char>::max()}(eng);});
+        std::generate(begin(o), end(o), [&]{return random_int<char>(eng);});
 
         std::vector<char>    p(255);
         std::vector<uint8_t> q(255);
