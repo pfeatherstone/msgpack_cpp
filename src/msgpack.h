@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <cstring>
-#include <endian.h>
 #include <type_traits>
 #include <limits>
 #include <utility>
@@ -467,7 +466,7 @@ namespace msgpackcpp
         {
             // unsigned 16
             constexpr uint8_t format = MSGPACK_U16;
-            const     uint16_t v16   = htobe16(static_cast<uint16_t>(v));
+            const     uint16_t v16   = host_to_b16(static_cast<uint16_t>(v));
             out((const char*)&format, 1);
             out((const char*)&v16, 2);
         }    
@@ -475,7 +474,7 @@ namespace msgpackcpp
         {
             // unsigned 32
             constexpr uint8_t format = 0xce;
-            const     uint32_t v32   = htobe32(static_cast<uint32_t>(v));
+            const     uint32_t v32   = host_to_b32(static_cast<uint32_t>(v));
             out((const char*)&format, 1);
             out((const char*)&v32, 4);
         }
@@ -483,7 +482,7 @@ namespace msgpackcpp
         {
             // unsigned 64
             constexpr uint8_t format = 0xcf;
-            const     uint64_t v64   = htobe64(static_cast<uint64_t>(v));
+            const     uint64_t v64   = host_to_b64(static_cast<uint64_t>(v));
             out((const char*)&format, 1);
             out((const char*)&v64, 8);
         }
@@ -516,7 +515,7 @@ namespace msgpackcpp
         {
             // negative - int16
             constexpr uint8_t format = 0xd1;
-            const     uint16_t v16   = htobe16(bit_cast<uint16_t>(static_cast<int16_t>(v)));
+            const     uint16_t v16   = host_to_b16(bit_cast<uint16_t>(static_cast<int16_t>(v)));
             out((const char*)&format, 1);
             out((const char*)&v16, 2);
         }    
@@ -524,7 +523,7 @@ namespace msgpackcpp
         {
             // negative - int32_t
             constexpr uint8_t format = 0xd2;
-            const     uint32_t v32   = htobe32(bit_cast<uint32_t>(static_cast<int32_t>(v)));
+            const     uint32_t v32   = host_to_b32(bit_cast<uint32_t>(static_cast<int32_t>(v)));
             out((const char*)&format, 1);
             out((const char*)&v32, 4);
         }
@@ -532,7 +531,7 @@ namespace msgpackcpp
         {
             // negative - int64_T
             constexpr uint8_t format = 0xd3;
-            const     uint64_t v64   = htobe64(bit_cast<uint64_t>(static_cast<int64_t>(v)));
+            const     uint64_t v64   = host_to_b64(bit_cast<uint64_t>(static_cast<int64_t>(v)));
             out((const char*)&format, 1);
             out((const char*)&v64, 8);
         }
@@ -566,21 +565,21 @@ namespace msgpackcpp
             // unsigned 16
             uint16_t tmp{};
             in((char*)&tmp, 2);
-            v = htobe16(tmp);
+            v = host_to_b16(tmp);
         }
         else if (format == 0xce)
         {
             // unsigned 32
             uint32_t tmp{};
             in((char*)&tmp, 4);
-            v = htobe32(tmp);
+            v = host_to_b32(tmp);
         }
         else if (format == 0xcf)
         {
             // unsigned 64
             uint64_t tmp{};
             in((char*)&tmp, 8);
-            v = htobe64(tmp);
+            v = host_to_b64(tmp);
         }
         else if (format == 0xd0)
         {
@@ -594,21 +593,21 @@ namespace msgpackcpp
             // signed 16
             uint16_t tmp{};
             in((char*)&tmp, 2);
-            v = bit_cast<int16_t>(htobe16(tmp));
+            v = bit_cast<int16_t>(host_to_b16(tmp));
         }
         else if (format == 0xd2)
         {
             // signed 32
             uint32_t tmp{};
             in((char*)&tmp, 4);
-            v = bit_cast<int32_t>(htobe32(tmp));
+            v = bit_cast<int32_t>(host_to_b32(tmp));
         }
         else if (format == 0xd3)
         {
             // signed 64
             uint64_t tmp{};
             in((char*)&tmp, 8);
-            v = bit_cast<int64_t>(htobe64(tmp));
+            v = bit_cast<int64_t>(host_to_b64(tmp));
         }
         else
             throw std::system_error(BAD_FORMAT);
@@ -620,7 +619,7 @@ namespace msgpackcpp
     inline void serialize(Stream& out, float v)
     {
         constexpr uint8_t  format   = 0xca;
-        const     uint32_t tmp      = htobe32(bit_cast<uint32_t>(v)); 
+        const     uint32_t tmp      = host_to_b32(bit_cast<uint32_t>(v)); 
         out((const char*)&format, 1);
         out((const char*)&tmp, 4);
     }
@@ -629,7 +628,7 @@ namespace msgpackcpp
     inline void serialize(Stream& out, double v)
     {
         constexpr uint8_t  format   = 0xcb;
-        const     uint64_t tmp      = htobe64(bit_cast<uint64_t>(v)); 
+        const     uint64_t tmp      = host_to_b64(bit_cast<uint64_t>(v)); 
         out((const char*)&format, 1);
         out((const char*)&tmp, 8);
     }
@@ -644,13 +643,13 @@ namespace msgpackcpp
         {
             uint32_t tmp{};
             in((char*)&tmp, 4);
-            v = bit_cast<float>(htobe32(tmp));
+            v = bit_cast<float>(host_to_b32(tmp));
         }
         else if (format == 0xcb)
         {
             uint64_t tmp{};
             in((char*)&tmp, 8);
-            v = bit_cast<double>(htobe64(tmp));
+            v = bit_cast<double>(host_to_b64(tmp));
         }
         else
             throw std::system_error(BAD_FORMAT);
@@ -676,14 +675,14 @@ namespace msgpackcpp
         else if (size < 65536)
         {
             constexpr uint8_t  format = 0xda;
-            const     uint16_t size16 = htobe16(static_cast<uint16_t>(size));
+            const     uint16_t size16 = host_to_b16(static_cast<uint16_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size16, 2);
         }
         else 
         {
             constexpr uint8_t  format = 0xdb;
-            const     uint32_t size32 = htobe32(static_cast<uint32_t>(size));
+            const     uint32_t size32 = host_to_b32(static_cast<uint32_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size32, 4);
         }
@@ -709,13 +708,13 @@ namespace msgpackcpp
         {
             uint16_t size16{};
             in((char*)&size16, 2);
-            size = htobe16(size16);
+            size = host_to_b16(size16);
         }
         else if (format == 0xdb)
         {
             uint32_t size32{};
             in((char*)&size32, 4);
-            size = htobe32(size32);
+            size = host_to_b32(size32);
         }
         else
             throw std::system_error(BAD_FORMAT);
@@ -758,14 +757,14 @@ namespace msgpackcpp
         else if (len < 65536)
         {
             constexpr uint8_t  format = 0xc5;
-            const     uint16_t size16 = htobe16(static_cast<uint16_t>(len));
+            const     uint16_t size16 = host_to_b16(static_cast<uint16_t>(len));
             out((const char*)&format, 1);
             out((const char*)&size16, 2);
         }
         else 
         {
             constexpr uint8_t  format = 0xc6;
-            const     uint32_t size32 = htobe32(static_cast<uint32_t>(len));
+            const     uint32_t size32 = host_to_b32(static_cast<uint32_t>(len));
             out((const char*)&format, 1);
             out((const char*)&size32, 4);
         }
@@ -787,13 +786,13 @@ namespace msgpackcpp
         {
             uint16_t size16{};
             in((char*)&size16, 2);
-            size = htobe16(size16);
+            size = host_to_b16(size16);
         }
         else if (format == 0xc6)
         {
             uint32_t size32{};
             in((char*)&size32, 4);
-            size = htobe32(size32);
+            size = host_to_b32(size32);
         }
         else
             throw std::system_error(BAD_FORMAT);
@@ -849,14 +848,14 @@ namespace msgpackcpp
         else if (size < 65536)
         {
             constexpr uint8_t  format = 0xdc;
-            const     uint16_t size16 = htobe16(static_cast<uint16_t>(size));
+            const     uint16_t size16 = host_to_b16(static_cast<uint16_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size16, 2);
         }
         else 
         {
             constexpr uint8_t  format = 0xdd;
-            const     uint32_t size32 = htobe32(static_cast<uint32_t>(size));
+            const     uint32_t size32 = host_to_b32(static_cast<uint32_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size32, 4);
         }
@@ -876,13 +875,13 @@ namespace msgpackcpp
         {
             uint16_t size16{};
             in((char*)&size16, 2);
-            size = htobe16(size16);
+            size = host_to_b16(size16);
         }
         else if (format == 0xdd)
         {
             uint32_t size32{};
             in((char*)&size32, 4);
-            size = htobe32(size32);
+            size = host_to_b32(size32);
         }
         else
             throw std::system_error(BAD_FORMAT);
@@ -919,14 +918,14 @@ namespace msgpackcpp
         else if (size < 65536)
         {
             constexpr uint8_t  format = 0xde;
-            const     uint16_t size16 = htobe16(static_cast<uint16_t>(size));
+            const     uint16_t size16 = host_to_b16(static_cast<uint16_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size16, 2);
         }
         else 
         {
             constexpr uint8_t  format = 0xdf;
-            const     uint32_t size32 = htobe32(static_cast<uint32_t>(size));
+            const     uint32_t size32 = host_to_b32(static_cast<uint32_t>(size));
             out((const char*)&format, 1);
             out((const char*)&size32, 4);
         }
@@ -946,13 +945,13 @@ namespace msgpackcpp
         {
             uint16_t size16{};
             in((char*)&size16, 2);
-            size = htobe16(size16);
+            size = host_to_b16(size16);
         }
         else if (format == 0xdf)
         {
             uint32_t size32{};
             in((char*)&size32, 4);
-            size = htobe32(size32);
+            size = host_to_b32(size32);
         }
         else
             throw std::system_error(BAD_FORMAT);
