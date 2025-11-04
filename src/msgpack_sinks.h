@@ -4,7 +4,7 @@
 #include <vector>
 #include <ostream>
 #include <istream>
-#include "msgpack_error.h"
+#include "msgpack.h"
 
 namespace msgpackcpp
 {
@@ -23,7 +23,7 @@ namespace msgpackcpp
         };
     }
 
-    template<class Byte, class Alloc, std::enable_if_t<sizeof(Byte) == 1, bool> = true>
+    template<class Byte, class Alloc, std::enable_if_t<is_byte<Byte>, bool> = true>
     auto source(const std::vector<Byte, Alloc>& buf)
     {
         size_t offset{0};
