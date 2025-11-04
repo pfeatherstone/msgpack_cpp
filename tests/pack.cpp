@@ -10,14 +10,6 @@ using namespace std;
 using namespace std::literals::string_view_literals;
 using namespace msgpackcpp;
 
-template<class Byte, class Allocator>
-struct vector_sink
-{
-    std::vector<Byte, Allocator>& buf;
-    vector_sink(std::vector<Byte, Allocator>& buf_) : buf{buf_} {}
-    void write(const char* data, size_t len) {buf.insert(end(buf), data, data + len);}
-};
-
 const auto num_errors = [](const auto& buf1, const auto& buf2)
 {
     int errors{0};
@@ -77,7 +69,7 @@ namespace custom_namespace
 
     struct custom_struct2
     {
-        std::vector<custom_struct1> my_vec;
+        std::array<custom_struct1, 2> my_vec;
     };
 
     BOOST_DESCRIBE_STRUCT(custom_struct2, (), (my_vec))
@@ -145,8 +137,8 @@ TEST_SUITE("[PACK]")
             // Test serialization compatibility
             {
                 // using msgpack-c library
-                vector_sink sink{buf1};
-                msgpack::packer pack{&sink};
+                auto p = sink(buf1);
+                msgpack::packer pack{&p};
                 pack.pack(b_);
                 pack.pack(a);
                 pack.pack(b);
@@ -260,6 +252,7 @@ TEST_SUITE("[PACK]")
         std::vector<char>    v(70000);
         std::vector<uint8_t> w(70000);
         std::vector<int8_t>  x(70000);
+        std::array<char, 1000> y;
         std::generate(begin(p), end(p), [&]{return random_int<char>(eng);});
         std::generate(begin(q), end(q), [&]{return random_int<uint8_t>(eng);});
         std::generate(begin(r), end(r), [&]{return random_int<int8_t>(eng);});
@@ -269,12 +262,13 @@ TEST_SUITE("[PACK]")
         std::generate(begin(v), end(v), [&]{return random_int<char>(eng);});
         std::generate(begin(w), end(w), [&]{return random_int<uint8_t>(eng);});
         std::generate(begin(x), end(x), [&]{return random_int<int8_t>(eng);});
+        std::generate(begin(y), end(y), [&]{return random_int<char>(eng);});
 
         // Test serialization compatibility
         {
             // using msgpack-c library
-            vector_sink sink{buf1};
-            msgpack::packer pack{&sink};
+            auto out = sink(buf1);
+            msgpack::packer pack{&out};
             pack.pack(k);
             pack.pack(l);
             pack.pack(m);
@@ -289,6 +283,7 @@ TEST_SUITE("[PACK]")
             pack.pack(v);
             pack.pack(w);
             pack.pack(x);
+            pack.pack(y);
         }
 
         {
@@ -310,6 +305,7 @@ TEST_SUITE("[PACK]")
             serialize(out, v);
             serialize(out, w);
             serialize(out, x);
+            serialize(out, y);
         }
 
         REQUIRE(num_errors(buf1, buf2) == 0);
@@ -321,6 +317,7 @@ TEST_SUITE("[PACK]")
             std::vector<char>       pp, ss, vv;
             std::vector<uint8_t>    qq, tt, ww;
             std::vector<int8_t>     rr, uu, xx;
+            std::array<char, 1000>  yy;
             auto in = source(buf2);
             deserialize(in, kk);
             deserialize(in, ll);
@@ -336,6 +333,7 @@ TEST_SUITE("[PACK]")
             deserialize(in, vv);
             deserialize(in, ww);
             deserialize(in, xx);
+            deserialize(in, yy);
             REQUIRE(k == kk);  
             REQUIRE(l == ll);
             REQUIRE(m == mm);
@@ -350,6 +348,7 @@ TEST_SUITE("[PACK]")
             REQUIRE(num_errors(v, vv) == 0);
             REQUIRE(num_errors(w, ww) == 0);
             REQUIRE(num_errors(x, xx) == 0);
+            REQUIRE(num_errors(y, yy) == 0);
         }
     }
 
@@ -372,9 +371,9 @@ TEST_SUITE("[PACK]")
 
         {
             // using msgpack-c library
-            vector_sink sink{buf1};
-            msgpack::pack(sink, a);
-            msgpack::pack(sink, b);
+            auto p = sink(buf1);
+            msgpack::pack(p, a);
+            msgpack::pack(p, b);
         }
 
         {
@@ -410,8 +409,8 @@ TEST_SUITE("[PACK]")
 
         {
             // using msgpack-c library
-            vector_sink sink{buf1};
-            msgpack::pack(sink, a);
+            auto p = sink(buf1);
+            msgpack::pack(p, a);
         }
 
         {
@@ -448,8 +447,8 @@ TEST_SUITE("[PACK]")
 
         {
             // using msgpack-c library
-            vector_sink sink{buf1};
-            msgpack::packer pack{&sink};
+            auto p = sink(buf1);
+            msgpack::packer pack{&p};
             pack.pack_array(4);
             pack.pack(a.my_int);
             pack.pack(a.my_float);
@@ -471,8 +470,8 @@ TEST_SUITE("[PACK]")
 
         {
             // using msgpack-c library
-            vector_sink sink{buf1};
-            msgpack::packer pack{&sink};
+            auto p = sink(buf1);
+            msgpack::packer pack{&p};
             pack.pack_map(4);
             pack.pack("my_int");
             pack.pack(a.my_int);
@@ -494,8 +493,8 @@ TEST_SUITE("[PACK]")
         REQUIRE(num_errors(buf1, buf2) == 0);
 
         custom_namespace::custom_struct2 b;
-        b.my_vec.push_back(a);
-        b.my_vec.push_back(a);
+        b.my_vec[0] = a;
+        b.my_vec[1] = a;
 
         custom_namespace::custom_struct3 c;
         c.my_int    = random_int<int64_t>(eng);
