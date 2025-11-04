@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <endian.h>
 #include <type_traits>
 #include <limits>
 #include <utility>
