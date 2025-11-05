@@ -19,7 +19,7 @@ namespace msgpackcpp
 
         sink_vector(std::vector<Byte,Alloc>& buf_) : buf{buf_} {}
 
-        void write(const char* data, size_t nbytes) override
+        void write(const char* data, size_t nbytes) override final
         {
             buf.insert(end(buf), data, data + nbytes);
         }

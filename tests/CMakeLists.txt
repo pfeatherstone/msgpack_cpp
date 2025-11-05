@@ -36,6 +36,7 @@ add_executable(tests
 target_compile_features(tests PRIVATE cxx_std_17)
 target_compile_options(tests PRIVATE $<${IS_NOT_MSVC}:-Wall -Wextra -Werror>)
 target_link_options(tests PRIVATE $<$<AND:$<CONFIG:RELEASE>,${IS_NOT_MSVC}>:-s>)
+set_target_properties(tests PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
 # target_compile_options(tests PRIVATE $<${IS_MSVC}:/Wall /WX>)
 target_include_directories(tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 target_link_libraries(tests  PRIVATE Boost::describe PRIVATE msgpack-cxx)
