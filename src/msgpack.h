@@ -136,13 +136,6 @@ namespace msgpackcpp
         void unpack(source_base& in);
         static value unpack_static(source_base& in);
     };
-    
-//----------------------------------------------------------------------------------------------------------------
-
-    template<class Byte>
-    constexpr bool is_byte = std::is_same_v<Byte, char>     || 
-                             std::is_same_v<Byte, uint8_t>  ||
-                             std::is_same_v<Byte, int8_t>;
 
 //----------------------------------------------------------------------------------------------------------------
 
@@ -292,6 +285,16 @@ namespace msgpackcpp
         return dst;
     }
 #endif
+
+//----------------------------------------------------------------------------------------------------------------
+
+    template<class Byte>
+    constexpr bool is_byte = std::is_same_v<Byte, char>     || 
+                             std::is_same_v<Byte, uint8_t>  ||
+                             std::is_same_v<Byte, int8_t>;
+
+    template<class Byte>
+    using check_byte = std::enable_if_t<is_byte<Byte>, bool>;
 
 //----------------------------------------------------------------------------------------------------------------
 
@@ -501,7 +504,7 @@ namespace msgpackcpp
         }
         else
         {
-            // negative - int64_T
+            // negative - int64_t
             constexpr uint8_t format = MSGPACK_I64;
             const     uint64_t v64   = host_to_b64(bit_cast<uint64_t>(static_cast<int64_t>(v)));
             out.write((const char*)&format, 1);

@@ -12,7 +12,7 @@ namespace msgpackcpp
 //----------------------------------------------------------------------------------------------------------------
 
     template<class Byte, class Alloc>
-    struct sink_vector : sink_base
+    struct sink_vector final : sink_base
     {
         static_assert(is_byte<Byte>, "Byte needs to be a byte");
         std::vector<Byte,Alloc>& buf;
@@ -26,7 +26,7 @@ namespace msgpackcpp
     };
 
     template<class Byte, class Alloc>
-    struct source_vector : source_base
+    struct source_vector final : source_base
     {
         static_assert(is_byte<Byte>, "Byte needs to be a byte");
         const std::vector<Byte,Alloc>& data;
@@ -34,7 +34,7 @@ namespace msgpackcpp
 
         source_vector(const std::vector<Byte,Alloc>& data_) : data{data_} {}
 
-        void read(char* buf, size_t nbytes) override
+        void read(char* buf, size_t nbytes) override final
         {
             if ((data.size() - offset) < nbytes)
                 throw std::system_error(OUT_OF_DATA);
@@ -42,24 +42,24 @@ namespace msgpackcpp
             offset += nbytes;
         }
 
-        uint8_t peak() override
+        uint8_t peak() override final
         {
             return static_cast<uint8_t>(data[offset]);
         }
 
-        size_t remaining() const override
+        size_t remaining() const override final
         {
             return data.size() - offset;
         }
     };
 
-    template<class Byte, class Alloc, std::enable_if_t<is_byte<Byte>, bool> = true>
+    template<class Byte, class Alloc, check_byte<Byte> = true>
     auto sink(std::vector<Byte, Alloc>& buf)
     {
         return sink_vector<Byte,Alloc>{buf};
     }
 
-    template<class Byte, class Alloc, std::enable_if_t<is_byte<Byte>, bool> = true>
+    template<class Byte, class Alloc, check_byte<Byte> = true>
     auto source(const std::vector<Byte, Alloc>& buf)
     {
         return source_vector<Byte,Alloc>{buf};
@@ -67,28 +67,28 @@ namespace msgpackcpp
 
 //----------------------------------------------------------------------------------------------------------------
 
-    struct ostream_sink : sink_base
+    struct ostream_sink final : sink_base
     {
         std::ostream& out;
 
         ostream_sink(std::ostream& out_) : out{out_}{}
-        void write(const char* data, size_t nbytes) override {out.write(data, nbytes);}
+        void write(const char* data, size_t nbytes) override final {out.write(data, nbytes);}
     };
 
-    struct istream_source : source_base
+    struct istream_source final : source_base
     {
         std::istream& in;
 
         istream_source(std::istream& in_) : in{in_}{}
 
-        void read(char* buf, size_t nbytes) override
+        void read(char* buf, size_t nbytes) override final
         {
             in.read(buf, nbytes);
             if (in.gcount() != (long)nbytes)
                 throw std::system_error(OUT_OF_DATA);
         }
 
-        uint8_t peak() override
+        uint8_t peak() override final
         {
             uint8_t b = static_cast<uint8_t>(in.peek());
             if (!in || !in.good() || in.eof())
@@ -96,7 +96,7 @@ namespace msgpackcpp
             return b;
         }
 
-        size_t remaining() const override
+        size_t remaining() const override final
         {
             const auto pos = in.tellg();
             in.seekg(0, std::ios::end );
