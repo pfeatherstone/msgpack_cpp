@@ -1,3 +1,4 @@
+#include <sstream>
 #include "doctest.h"
 #include "msgpack.h"
 #include "msgpack_sinks.h"
@@ -123,12 +124,18 @@ TEST_SUITE("[VALUE]")
 
         // pack
         std::vector<char> buf0;
+        std::stringstream buf1;
         auto out0 = sink(buf0);
+        auto out1 = sink(buf1);
         jv1.pack(out0);
+        jv1.pack(out1);
 
         // unpack
         auto in0 = source(buf0);
+        auto in1 = source(buf1);
         value jv2 = value::unpack_static(in0);
+        value jv3 = value::unpack_static(in1);
         check_niels(jv2);
+        check_niels(jv3);
     } 
 }
