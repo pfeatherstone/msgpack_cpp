@@ -18,6 +18,7 @@ namespace msgpackcpp
     value::value(const char* v)         : val(std::string(v)) {}
     value::value(std::string_view v)    : val(std::string(v)) {}
     value::value(std::string v)         : val{std::move(v)} {}
+    value::value(std::vector<char> v)   : val{std::move(v)} {}
     value::value(std::vector<value> v)  : val{std::move(v)} {}
     value::value(std::map<std::string, value> v) : val{std::move(v)} {}
 
@@ -42,6 +43,7 @@ namespace msgpackcpp
     size_t value::size() const noexcept
     {
         return std::visit(overloaded{
+            [&](const std::vector<char>& v)             {return v.size();},
             [&](const std::vector<value>& v)            {return v.size();},
             [&](const std::map<std::string, value>& v)  {return v.size();},
             [&](std::nullptr_t)                         {return (size_t)0;},
@@ -56,6 +58,7 @@ namespace msgpackcpp
     bool value::is_int()    const noexcept {return std::holds_alternative<int64_t>(val) || std::holds_alternative<uint64_t>(val);}
     bool value::is_real()   const noexcept {return std::holds_alternative<double>(val);}
     bool value::is_str()    const noexcept {return std::holds_alternative<std::string>(val);}
+    bool value::is_binary() const noexcept {return std::holds_alternative<std::vector<char>>(val);}
     bool value::is_array()  const noexcept {return std::holds_alternative<std::vector<value>>(val);}
     bool value::is_object() const noexcept {return std::holds_alternative<std::map<std::string, value>>(val);}
 
@@ -71,6 +74,8 @@ namespace msgpackcpp
     auto value::as_real()            -> double&                     {return std::get<double>(val);}
     auto value::as_str()       const -> const std::string&          {return std::get<std::string>(val);}
     auto value::as_str()             -> std::string&                {return std::get<std::string>(val);}
+    auto value::as_bin()       const -> const std::vector<char>&    {return std::get<std::vector<char>>(val);}
+    auto value::as_bin()             -> std::vector<char>&          {return std::get<std::vector<char>>(val);}
     auto value::as_array()     const -> const std::vector<value>&   {return std::get<std::vector<value>>(val);}
     auto value::as_array()           -> std::vector<value>&         {return std::get<std::vector<value>>(val);}
     auto value::as_object()    const -> const std::map<std::string, value>& {return std::get<std::map<std::string, value>>(val);}
@@ -150,41 +155,74 @@ namespace msgpackcpp
 
     void value::unpack(source_base& in)
     {
-        while (in.remaining()) 
+        const uint8_t format = in.peak();
+        
+        if (format == MSGPACK_NIL)
         {
-            const uint8_t format = in.peak();
-            
-            if (format == MSGPACK_NIL)
-            {
-                deserialize(in, nullptr);
-            }
-            else if (format == MSGPACK_FALSE || format == MSGPACK_TRUE)
-            {
-                bool v{};
-                deserialize(in, v);
-                val = v;
-            }
-            else if (format == MSGPACK_F32 || format == MSGPACK_F64)
-            {
-                double v{};
-                deserialize(in, v);
-                val = v;
-            }
-            else if (format < MSGPACK_FIXINT_POS || format == MSGPACK_U8 || format == MSGPACK_U16 || format == MSGPACK_U32 || format == MSGPACK_U64)
-            {
-                uint64_t v{};
-                deserialize(in, v);
-                val = v;
-            }
-            else if ((format & 0b11100000) == MSGPACK_FIXINT_NEG || format == MSGPACK_I8 || format == MSGPACK_I16 || format == MSGPACK_I32 || format == MSGPACK_I64)
-            {
-                int64_t v{};
-                deserialize(in, v);
-                val = v;
-            }
-            else
-                throw std::system_error(BAD_FORMAT);
+            deserialize(in, nullptr);
         }
+        else if (format == MSGPACK_FALSE || format == MSGPACK_TRUE)
+        {
+            bool v{};
+            deserialize(in, v);
+            val = v;
+        }
+        else if (format == MSGPACK_F32 || format == MSGPACK_F64)
+        {
+            double v{};
+            deserialize(in, v);
+            val = v;
+        }
+        else if (format < MSGPACK_FIXINT_POS || format == MSGPACK_U8 || format == MSGPACK_U16 || format == MSGPACK_U32 || format == MSGPACK_U64)
+        {
+            uint64_t v{};
+            deserialize(in, v);
+            val = v;
+        }
+        else if ((format & 0b11100000) == MSGPACK_FIXINT_NEG || format == MSGPACK_I8 || format == MSGPACK_I16 || format == MSGPACK_I32 || format == MSGPACK_I64)
+        {
+            int64_t v{};
+            deserialize(in, v);
+            val = v;
+        }
+        else if ((format & 0b11100000) == MSGPACK_FIXSTR || format == MSGPACK_STR8 || format == MSGPACK_STR16 || format == MSGPACK_STR32)
+        {
+            std::string v;
+            deserialize(in, v);
+            val = std::move(v);
+        }
+        else if (format == MSGPACK_BIN8 || format == MSGPACK_BIN16 || format == MSGPACK_BIN32)
+        {
+            std::vector<char> v;
+            deserialize(in, v);
+            val = std::move(v);
+        }
+        else if ((format & 0b11110000) == MSGPACK_FIXARR || format == MSGPACK_ARR16 || format == MSGPACK_ARR32)
+        {
+            uint32_t size{};
+            deserialize_array_size(in, size);
+            std::vector<value> v(size);
+            for (auto& el : v)
+                el.unpack(in);
+            val = std::move(v);
+        }
+        else if ((format & 0b11110000) == MSGPACK_FIXMAP || format == MSGPACK_MAP16 || format == MSGPACK_MAP32)
+        {
+            uint32_t size{};
+            deserialize_map_size(in, size);
+            std::map<std::string, value> m;
+            for (size_t i{0} ; i < size ; ++i)
+            {
+                std::string k;
+                value       v;
+                deserialize(in, k);
+                v.unpack(in);
+                m.emplace(std::make_pair(std::move(k), std::move(v)));
+            }
+            val = std::move(m);
+        }
+        else
+            throw std::system_error(BAD_FORMAT);
     }
 
     value value::unpack_static(source_base& in)

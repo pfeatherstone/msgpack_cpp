@@ -14,7 +14,7 @@ value niels_data()
         {"name", "Niels"},
         {"nothing", nullptr},
         {"answer", {
-            {"everything", 42}
+            {"everything", -42}
         }},
         {"list", {1, 0, 2}},
         {"object", {
@@ -32,7 +32,7 @@ void check_niels(value& jv)
     REQUIRE(jv.at("happy").as_bool() == true);
     REQUIRE(jv.at("name").as_str() == "Niels");
     REQUIRE(jv.at("nothing").is_null());
-    REQUIRE(jv.at("answer").at("everything").as_int64() == 42);
+    REQUIRE(jv.at("answer").at("everything").as_int64() == -42);
     REQUIRE(jv.at("list").as_array().size() == 3);
     REQUIRE(jv.at("object").at("currency").as_str() == "USD");
     REQUIRE(jv.at("object").at("value").as_real() == 42.99);
@@ -107,6 +107,11 @@ TEST_SUITE("[VALUE]")
             REQUIRE(el.size() == 2);
         }
 
+        jv = std::vector<char>{1,0,1,0,1,0,1,0,1,0,1,0,1,0,1};
+        REQUIRE(jv.is_binary());
+        REQUIRE(jv.size() == 15);
+        REQUIRE(jv.as_bin().size() == 15);
+
         jv = niels_data();
         check_niels(jv);
     }
@@ -116,12 +121,14 @@ TEST_SUITE("[VALUE]")
         value jv1 = niels_data();
         check_niels(jv1);
 
+        // pack
         std::vector<char> buf0;
         auto out0 = sink(buf0);
         jv1.pack(out0);
-        // auto in0 = source(buf0);
 
-        // value jv2 = value::unpack(in0);
-        // check_niels(jv2);
+        // unpack
+        auto in0 = source(buf0);
+        value jv2 = value::unpack_static(in0);
+        check_niels(jv2);
     } 
 }

@@ -32,7 +32,6 @@ namespace msgpackcpp
     {
         virtual void    read(char* buf, size_t nbytes)  = 0;
         virtual uint8_t peak()                          = 0;
-        virtual size_t  remaining() const               = 0;
     };
 
 //----------------------------------------------------------------------------------------------------------------
@@ -71,6 +70,7 @@ namespace msgpackcpp
                      uint64_t,
                      double,
                      std::string,
+                     std::vector<char>,
                      std::vector<value>,
                      std::map<std::string, value>> val;
 
@@ -96,6 +96,7 @@ namespace msgpackcpp
         value(const char* v);
         value(std::string_view v);
         value(std::string v);
+        value(std::vector<char> v);
         value(std::vector<value> v);
         value(std::map<std::string, value> v);
         value(std::initializer_list<value> v);
@@ -107,6 +108,7 @@ namespace msgpackcpp
         bool is_int()       const noexcept;
         bool is_real()      const noexcept;
         bool is_str()       const noexcept;
+        bool is_binary()    const noexcept;
         bool is_array()     const noexcept;
         bool is_object()    const noexcept;
 
@@ -120,6 +122,8 @@ namespace msgpackcpp
         auto as_real()            -> double&;
         auto as_str()       const -> const std::string&;
         auto as_str()             -> std::string&;
+        auto as_bin()       const -> const std::vector<char>&;
+        auto as_bin()             -> std::vector<char>&;
         auto as_array()     const -> const std::vector<value>&;
         auto as_array()           -> std::vector<value>&;
         auto as_object()    const -> const std::map<std::string, value>&;

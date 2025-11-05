@@ -44,12 +44,9 @@ namespace msgpackcpp
 
         uint8_t peak() override final
         {
+            if (offset >= data.size())
+                throw std::system_error(OUT_OF_DATA);
             return static_cast<uint8_t>(data[offset]);
-        }
-
-        size_t remaining() const override final
-        {
-            return data.size() - offset;
         }
     };
 
@@ -94,15 +91,6 @@ namespace msgpackcpp
             if (!in || !in.good() || in.eof())
                 throw std::system_error(OUT_OF_DATA);
             return b;
-        }
-
-        size_t remaining() const override final
-        {
-            const auto pos = in.tellg();
-            in.seekg(0, std::ios::end );
-            const auto len = in.tellg() - pos;
-            in.seekg( pos );
-            return len;
         }
     };
 
