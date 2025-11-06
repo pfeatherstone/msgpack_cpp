@@ -28,21 +28,16 @@
 
 namespace msgpackcpp
 {
-    template<class F>
-    concept sink_type = std::invocable<F, const char*, std::size_t>;
-
-    template<class F>
-    concept source_type = std::invocable<F, char*, std::size_t>;
+    template<class F> concept sink_type   = std::invocable<F, const char*, std::size_t>;
+    template<class F> concept source_type = std::invocable<F, char*, std::size_t>;
 }
 
-#define SINK_TYPE msgpackcpp::sink_type
+#define SINK_TYPE   msgpackcpp::sink_type
 #define SOURCE_TYPE msgpackcpp::source_type
 
 #else
-
 #define SINK_TYPE class
 #define SOURCE_TYPE class
-
 #endif
 
 namespace msgpackcpp

@@ -3,7 +3,7 @@
 ![Windows](https://github.com/pfeatherstone/msgpack_cpp/actions/workflows/windows.yml/badge.svg)
 
 # msgpack_cpp
-C++ header-only msgpack library using kiss principle
+C++ header-only msgpack library
 
 ## Example
 
@@ -21,13 +21,13 @@ std::vector<char> buf;
 // Creates a lambda which captures `buf` by reference and appends data to it when invoked
 auto out = sink(buf); 
 
-// The first argument can be any function object with signature void(const char* data, size_t len)
+// The first argument can be any function object with signature void(const char* data, size_t len) (when C++20 is used, it satisfies the sink_type concept)
 serialize(out, a);
 
 // Creates a mutable lambda which captures `buf` by reference and reads data from it when invoked
 auto in = source(buf); 
 
-// The first argument can be any function object with signature void(char* data, size_t len)
+// The first argument can be any function object with signature void(char* data, size_t len) (when C++20 is used, it satisfies the source_type concept)
 deserialize(in, a);
 ```
 
@@ -82,14 +82,14 @@ namespace mynamespace
         std::vector<short>  my_audio;
     };
 
-    template<class Stream>
-    void serialize(Stream& out, const my_struct1& obj)
+    template<SINK_TYPE Sink>
+    void serialize(Sink& out, const my_struct1& obj)
     {
         using msgpackcpp::serialize;
         serialize(out, std::tie(obj.my_int, obj.my_float, obj.my_string, obj.my_audio));
     }
 
-    template<class Source>
+    template<SOURCE_TYPE Source>
     void deserialize(Source& in, my_struct1& obj)
     {
         using msgpackcpp::deserialize;
