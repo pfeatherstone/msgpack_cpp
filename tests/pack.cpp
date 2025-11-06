@@ -10,6 +10,19 @@ using namespace std;
 using namespace std::literals::string_view_literals;
 using namespace msgpackcpp;
 
+template<class Byte, class Allocator>
+struct vector_sink
+{
+    std::vector<Byte, Allocator>& buf;
+
+    vector_sink(std::vector<Byte, Allocator>& buf_) : buf{buf_} {}
+
+    void write(const char* data, size_t len)
+    {
+        buf.insert(end(buf), data, data + len);
+    }
+};
+
 const auto num_errors = [](const auto& buf1, const auto& buf2)
 {
     int errors{0};
@@ -137,8 +150,8 @@ TEST_SUITE("[PACK]")
             // Test serialization compatibility
             {
                 // using msgpack-c library
-                auto p = sink(buf1);
-                msgpack::packer pack{&p};
+                vector_sink sink{buf1};
+                msgpack::packer pack{&sink};
                 pack.pack(b_);
                 pack.pack(a);
                 pack.pack(b);
@@ -267,8 +280,8 @@ TEST_SUITE("[PACK]")
         // Test serialization compatibility
         {
             // using msgpack-c library
-            auto out = sink(buf1);
-            msgpack::packer pack{&out};
+            vector_sink sink{buf1};
+            msgpack::packer pack{&sink};
             pack.pack(k);
             pack.pack(l);
             pack.pack(m);
@@ -371,9 +384,9 @@ TEST_SUITE("[PACK]")
 
         {
             // using msgpack-c library
-            auto p = sink(buf1);
-            msgpack::pack(p, a);
-            msgpack::pack(p, b);
+            vector_sink sink{buf1};
+            msgpack::pack(sink, a);
+            msgpack::pack(sink, b);
         }
 
         {
@@ -409,8 +422,8 @@ TEST_SUITE("[PACK]")
 
         {
             // using msgpack-c library
-            auto p = sink(buf1);
-            msgpack::pack(p, a);
+            vector_sink sink{buf1};
+            msgpack::pack(sink, a);
         }
 
         {
@@ -447,8 +460,8 @@ TEST_SUITE("[PACK]")
 
         {
             // using msgpack-c library
-            auto p = sink(buf1);
-            msgpack::packer pack{&p};
+            vector_sink sink{buf1};
+            msgpack::packer pack{&sink};
             pack.pack_array(4);
             pack.pack(a.my_int);
             pack.pack(a.my_float);
@@ -470,8 +483,8 @@ TEST_SUITE("[PACK]")
 
         {
             // using msgpack-c library
-            auto p = sink(buf1);
-            msgpack::packer pack{&p};
+            vector_sink sink{buf1};
+            msgpack::packer pack{&sink};
             pack.pack_map(4);
             pack.pack("my_int");
             pack.pack(a.my_int);

@@ -133,8 +133,8 @@ TEST_SUITE("[VALUE]")
         // unpack
         auto in0 = source(buf0);
         auto in1 = source(buf1);
-        value jv2 = value::unpack_static(in0);
-        value jv3 = value::unpack_static(in1);
+        value jv2 = unpack(in0);
+        value jv3 = unpack(in1);
         check_niels(jv2);
         check_niels(jv3);
     } 
