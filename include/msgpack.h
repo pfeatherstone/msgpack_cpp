@@ -12,7 +12,6 @@
 #include <vector>
 #include <array>
 #include <map>
-#include <unordered_map>
 #include <variant>
 #include <system_error>
 #if __cpp_lib_bit_cast
@@ -74,9 +73,33 @@ namespace msgpackcpp
     constexpr bool is_byte = std::is_same_v<Byte, char>     || 
                              std::is_same_v<Byte, uint8_t>  ||
                              std::is_same_v<Byte, int8_t>;
+  
+    template<class Byte>
+    constexpr bool is_binary_value_type = std::is_same_v<Byte, char> || std::is_same_v<Byte, uint8_t>;
+
+//----------------------------------------------------------------------------------------------------------------
+
+    template<class T, class = void>
+    struct is_map : std::false_type {};
+
+    template<class T>
+    struct is_map<T, std::void_t<typename T::key_type,
+                                 typename T::mapped_type,
+                                 typename T::value_type >> : std::true_type {};
+   
+    template<class T>
+    constexpr bool is_map_v = is_map<T>::value;
+
+//----------------------------------------------------------------------------------------------------------------
 
     template<class T>
     using check_byte = std::enable_if_t<is_byte<T>, bool>;
+
+    template<class T>
+    using check_binary = std::enable_if_t<is_binary_value_type<T>, bool>;
+
+    template<class T>
+    using check_nonbinary = std::enable_if_t<!is_binary_value_type<T>, bool>;
 
     template<class T>
     using check_float = std::enable_if_t<std::is_floating_point_v<T>, bool>;
@@ -86,6 +109,9 @@ namespace msgpackcpp
 
     template<class T>
     using check_uint = std::enable_if_t<std::is_integral_v<T> && std::is_unsigned_v<T>, bool>;
+
+    template<class T>
+    using check_map = std::enable_if_t<is_map_v<T>, bool>;
 
 //----------------------------------------------------------------------------------------------------------------
 
@@ -237,29 +263,17 @@ namespace msgpackcpp
     template<SINK_TYPE Sink>
     void serialize_bin_array(Sink& out, const char* data, const uint32_t len);
 
-    template<SINK_TYPE Sink, class Alloc>
-    void serialize(Sink& out, const std::vector<char, Alloc>& v);
+    template<SINK_TYPE Sink, class Byte, class Alloc, check_binary<Byte> = true>
+    void serialize(Sink& out, const std::vector<Byte, Alloc>& v);
 
-    template<SINK_TYPE Sink, class Alloc>
-    void serialize(Sink& out, const std::vector<uint8_t, Alloc>& v);
+    template<SOURCE_TYPE Source, class Byte, class Alloc, check_binary<Byte> = true>
+    void deserialize(Source& in, std::vector<Byte, Alloc>& v);
 
-    template<SOURCE_TYPE Source, class Alloc>
-    void deserialize(Source& in, std::vector<char, Alloc>& v);
+    template<SINK_TYPE Sink, class Byte, std::size_t N, check_binary<Byte> = true>
+    void serialize(Sink& out, const std::array<Byte, N>& v);
 
-    template<SOURCE_TYPE Source, class Alloc>
-    void deserialize(Source& in, std::vector<uint8_t, Alloc>& v);
-
-    template<SINK_TYPE Sink, std::size_t N>
-    void serialize(Sink& out, const std::array<char, N>& v);
-
-    template<SINK_TYPE Sink, std::size_t N>
-    void serialize(Sink& out, const std::array<uint8_t, N>& v);
-
-    template<SOURCE_TYPE Source, std::size_t N>
-    void deserialize(Source& in, std::array<char, N>& v);
-
-    template<SOURCE_TYPE Source, std::size_t N>
-    void deserialize(Source& in, std::array<uint8_t, N>& v);
+    template<SOURCE_TYPE Source, class Byte, std::size_t N, check_binary<Byte> = true>
+    void deserialize(Source& in, std::array<Byte, N>& v);
 
 //----------------------------------------------------------------------------------------------------------------
 
@@ -269,16 +283,16 @@ namespace msgpackcpp
     template<SOURCE_TYPE Source>
     void deserialize_array_size(Source& in, uint32_t& size);
 
-    template<SINK_TYPE Sink, class T, class Alloc>
+    template<SINK_TYPE Sink, class T, class Alloc, check_nonbinary<T> = true>
     void serialize(Sink& out, const std::vector<T, Alloc>& v);
 
-    template<SOURCE_TYPE Source, class T, class Alloc>
+    template<SOURCE_TYPE Source, class T, class Alloc, check_nonbinary<T> = true>
     void deserialize(Source& in, std::vector<T, Alloc>& v);
 
-    template<SINK_TYPE Sink, class T, std::size_t N>
+    template<SINK_TYPE Sink, class T, std::size_t N, check_nonbinary<T> = true>
     void serialize(Sink& out, const std::array<T, N>& v);
 
-    template<SOURCE_TYPE Source, class T, std::size_t N>
+    template<SOURCE_TYPE Source, class T, std::size_t N, check_nonbinary<T> = true>
     void deserialize(Source& in, std::array<T, N>& v);
 
 //----------------------------------------------------------------------------------------------------------------
@@ -289,43 +303,11 @@ namespace msgpackcpp
     template<SOURCE_TYPE Source>
     void deserialize_map_size(Source& in, uint32_t& size);
 
-    template <
-        SINK_TYPE Sink,
-        class K, 
-        class V, 
-        class Compare = std::less<K>,
-        class Alloc = std::allocator<std::pair<const K, V>>
-    >
-    void serialize(Sink& out, const std::map<K,V,Compare,Alloc>& map);
+    template <SINK_TYPE Sink, class Map, check_map<Map> = true>
+    void serialize(Sink& out, const Map& map);
 
-    template <
-        SOURCE_TYPE Source, 
-        class K, 
-        class V, 
-        class Compare = std::less<K>,
-        class Alloc = std::allocator<std::pair<const K, V>>
-    >
-    void deserialize(Source& in, std::map<K,V,Compare,Alloc>& map);
-
-    template <
-        SINK_TYPE Sink,
-        class K,
-        class V,
-        class Hash      = std::hash<K>,
-        class KeyEqual  = std::equal_to<K>,
-        class Alloc     = std::allocator<std::pair<const K, V>>
-    >
-    void serialize(Sink& out, const std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map);
-
-    template <
-        SOURCE_TYPE Source,
-        class K,
-        class V,
-        class Hash      = std::hash<K>,
-        class KeyEqual  = std::equal_to<K>,
-        class Alloc     = std::allocator<std::pair<const K, V>>
-    >
-    void deserialize(Source& in, std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map);
+    template <SOURCE_TYPE Source, class Map, check_map<Map> = true>
+    void deserialize(Source& in, Map& map);
 
 //----------------------------------------------------------------------------------------------------------------
 
@@ -1002,66 +984,35 @@ namespace msgpackcpp
         out(data, len);
     }
 
-    template<SINK_TYPE Sink, class Alloc>
-    inline void serialize(Sink& out, const std::vector<char, Alloc>& v)
+    template<SINK_TYPE Sink, class Byte, class Alloc, check_binary<Byte>>
+    inline void serialize(Sink& out, const std::vector<Byte, Alloc>& v)
     {
         serialize_bin_array(out, (const char*)v.data(), v.size());
     }
 
-    template<SINK_TYPE Sink, class Alloc>
-    inline void serialize(Sink& out, const std::vector<uint8_t, Alloc>& v)
+    template<SINK_TYPE Sink, class Byte, std::size_t N, check_binary<Byte>>
+    inline void serialize(Sink& out, const std::array<Byte, N>& v)
     {
         serialize_bin_array(out, (const char*)v.data(), v.size());
     }
 
-    template<SOURCE_TYPE Source, class Alloc>
-    inline void deserialize_(Source& in, uint8_t format, std::vector<char, Alloc>& v)
+    template<SOURCE_TYPE Source, class Byte, class Alloc, check_binary<Byte> = true>
+    inline void deserialize_(Source& in, uint8_t format, std::vector<Byte, Alloc>& v)
     {
         uint32_t size{};
         deserialize_bin_size_(in, format, size);
         v.resize(size);
-        in(v.data(), size);
+        in((char*)v.data(), size);
     }
 
-    template<SOURCE_TYPE Source, class Alloc>
-    inline void deserialize(Source& in, std::vector<char, Alloc>& v)
+    template<SOURCE_TYPE Source, class Byte, class Alloc, check_binary<Byte>>
+    inline void deserialize(Source& in, std::vector<Byte, Alloc>& v)
     {
         deserialize_(in, read_format(in), v);
     }
 
-    template<SOURCE_TYPE Source, class Alloc>
-    inline void deserialize(Source& in, std::vector<uint8_t, Alloc>& v)
-    {
-        uint32_t size{};
-        deserialize_bin_size(in, size);
-        v.resize(size);
-        in((char*)v.data(), size);
-    }
-
-    template<SINK_TYPE Sink, std::size_t N>
-    inline void serialize(Sink& out, const std::array<char, N>& v)
-    {
-        serialize_bin_array(out, (const char*)v.data(), v.size());
-    }
-
-    template<SINK_TYPE Sink, std::size_t N>
-    inline void serialize(Sink& out, const std::array<uint8_t, N>& v)
-    {
-        serialize_bin_array(out, (const char*)v.data(), v.size());
-    }
-
-    template<SOURCE_TYPE Source, std::size_t N>
-    inline void deserialize(Source& in, std::array<char, N>& v)
-    {
-        uint32_t size{};
-        deserialize_bin_size(in, size);
-        if (size != N)
-            throw std::system_error(BAD_SIZE);
-        in((char*)v.data(), size);
-    }
-
-    template<SOURCE_TYPE Source, std::size_t N>
-    inline void deserialize(Source& in, std::array<uint8_t, N>& v)
+    template<SOURCE_TYPE Source, class Byte, std::size_t N, check_binary<Byte>>
+    inline void deserialize(Source& in, std::array<Byte, N>& v)
     {
         uint32_t size{};
         deserialize_bin_size(in, size);
@@ -1125,7 +1076,7 @@ namespace msgpackcpp
         deserialize_array_size_(in, read_format(in), size);
     }
 
-    template<SINK_TYPE Sink, class T, class Alloc>
+    template<SINK_TYPE Sink, class T, class Alloc, check_nonbinary<T>>
     inline void serialize(Sink& out, const std::vector<T, Alloc>& v)
     { 
         serialize_array_size(out, v.size());
@@ -1133,7 +1084,7 @@ namespace msgpackcpp
             serialize(out, x);
     }
 
-    template<SOURCE_TYPE Source, class T, class Alloc>
+    template<SOURCE_TYPE Source, class T, class Alloc, check_nonbinary<T>>
     inline void deserialize(Source& in, std::vector<T, Alloc>& v)
     {
         uint32_t size{};
@@ -1143,7 +1094,7 @@ namespace msgpackcpp
             deserialize(in, x);
     }
 
-    template<SINK_TYPE Sink, class T, std::size_t N>
+    template<SINK_TYPE Sink, class T, std::size_t N, check_nonbinary<T>>
     inline void serialize(Sink& out, const std::array<T, N>& v)
     {
         serialize_array_size(out, v.size());
@@ -1151,7 +1102,7 @@ namespace msgpackcpp
             serialize(out, x);
     }
 
-    template<SOURCE_TYPE Source, class T, std::size_t N>
+    template<SOURCE_TYPE Source, class T, std::size_t N, check_nonbinary<T>>
     inline void deserialize(Source& in, std::array<T, N>& v)
     {
         uint32_t size{};
@@ -1217,14 +1168,8 @@ namespace msgpackcpp
         deserialize_map_size_(in, read_format(in), size);
     }
 
-    template <
-        SINK_TYPE Sink,
-        class K, 
-        class V, 
-        class Compare,
-        class Alloc
-    >
-    inline void serialize(Sink& out, const std::map<K,V,Compare,Alloc>& map)
+    template <SINK_TYPE Sink, class Map, check_map<Map>>
+    inline void serialize(Sink& out, const Map& map)
     {
         serialize_map_size(out, map.size());
         
@@ -1235,57 +1180,12 @@ namespace msgpackcpp
         }
     }
 
-    template <
-        SOURCE_TYPE Source,
-        class K, 
-        class V, 
-        class Compare,
-        class Alloc
-    >
-    inline void deserialize(Source& in, std::map<K,V,Compare,Alloc>& map)
+    template <SOURCE_TYPE Source, class Map, check_map<Map>>
+    inline void deserialize(Source& in, Map& map)
     {
-        uint32_t size{};
-        deserialize_map_size(in, size);
+        using K = typename Map::key_type;
+        using V = typename Map::mapped_type;
         
-        for (uint32_t i = 0 ; i < size ; ++i)
-        {
-            K key{};
-            V val{};
-            deserialize(in, key);
-            deserialize(in, val);
-            map.emplace(std::make_pair(key, val));
-        }
-    }
-
-    template <
-        SINK_TYPE Sink,
-        class K,
-        class V,
-        class Hash,
-        class KeyEqual,
-        class Alloc
-    >
-    inline void serialize(Sink& out, const std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map)
-    {
-        serialize_map_size(out, map.size());
-        
-        for (const auto& [k,v] : map)
-        {
-            serialize(out, k);
-            serialize(out, v);
-        }
-    }
-
-    template <
-        SOURCE_TYPE Source,
-        class K,
-        class V,
-        class Hash,
-        class KeyEqual,
-        class Alloc
-    >
-    inline void deserialize(Source& in, std::unordered_map<K,V,Hash,KeyEqual,Alloc>& map)
-    {
         uint32_t size{};
         deserialize_map_size(in, size);
         
