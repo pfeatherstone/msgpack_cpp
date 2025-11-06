@@ -155,61 +155,62 @@ namespace msgpackcpp
 
     void value::unpack(source_base& in)
     {
-        const uint8_t format = in.peak();
+        uint8_t format{};
+        in.read((char*)&format, 1);
         
         if (format == MSGPACK_NIL)
         {
-            deserialize(in, nullptr);
+            /*no-op*/
         }
-        else if (format == MSGPACK_FALSE || format == MSGPACK_TRUE)
+        else if (format_is_bool(format))
         {
             bool v{};
-            deserialize(in, v);
+            deserialize_(in, format, v);
             val = v;
         }
-        else if (format == MSGPACK_F32 || format == MSGPACK_F64)
+        else if (format_is_float(format))
         {
             double v{};
-            deserialize(in, v);
+            deserialize_(in, format, v);
             val = v;
         }
-        else if (format < MSGPACK_FIXINT_POS || format == MSGPACK_U8 || format == MSGPACK_U16 || format == MSGPACK_U32 || format == MSGPACK_U64)
+        else if (format_is_uint(format))
         {
             uint64_t v{};
-            deserialize(in, v);
+            deserialize_(in, format, v);
             val = v;
         }
-        else if ((format & 0b11100000) == MSGPACK_FIXINT_NEG || format == MSGPACK_I8 || format == MSGPACK_I16 || format == MSGPACK_I32 || format == MSGPACK_I64)
+        else if (format_is_sint(format))
         {
             int64_t v{};
-            deserialize(in, v);
+            deserialize_(in, format, v);
             val = v;
         }
-        else if ((format & 0b11100000) == MSGPACK_FIXSTR || format == MSGPACK_STR8 || format == MSGPACK_STR16 || format == MSGPACK_STR32)
+        else if (format_is_string(format))
         {
             std::string v;
-            deserialize(in, v);
+            deserialize_(in, format, v);
             val = std::move(v);
         }
-        else if (format == MSGPACK_BIN8 || format == MSGPACK_BIN16 || format == MSGPACK_BIN32)
+        else if (format_is_binary(format))
         {
             std::vector<char> v;
-            deserialize(in, v);
+            deserialize_(in, format, v);
             val = std::move(v);
         }
-        else if ((format & 0b11110000) == MSGPACK_FIXARR || format == MSGPACK_ARR16 || format == MSGPACK_ARR32)
+        else if (format_is_array(format))
         {
             uint32_t size{};
-            deserialize_array_size(in, size);
+            deserialize_array_size_(in, format, size);
             std::vector<value> v(size);
             for (auto& el : v)
                 el.unpack(in);
             val = std::move(v);
         }
-        else if ((format & 0b11110000) == MSGPACK_FIXMAP || format == MSGPACK_MAP16 || format == MSGPACK_MAP32)
+        else if (format_is_map(format))
         {
             uint32_t size{};
-            deserialize_map_size(in, size);
+            deserialize_map_size_(in, format, size);
             std::map<std::string, value> m;
             for (size_t i{0} ; i < size ; ++i)
             {

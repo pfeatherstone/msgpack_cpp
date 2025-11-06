@@ -31,7 +31,6 @@ namespace msgpackcpp
     struct source_base
     {
         virtual void    read(char* buf, size_t nbytes)  = 0;
-        virtual uint8_t peak()                          = 0;
     };
 
 //----------------------------------------------------------------------------------------------------------------
@@ -61,6 +60,25 @@ namespace msgpackcpp
 
 //----------------------------------------------------------------------------------------------------------------
 
+    template<class Byte>
+    constexpr bool is_byte = std::is_same_v<Byte, char>     || 
+                             std::is_same_v<Byte, uint8_t>  ||
+                             std::is_same_v<Byte, int8_t>;
+
+    template<class T>
+    using check_byte = std::enable_if_t<is_byte<T>, bool>;
+
+    template<class T>
+    using check_float = std::enable_if_t<std::is_floating_point_v<T>, bool>;
+
+    template<class T>
+    using check_sint = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>, bool>;
+
+    template<class T>
+    using check_uint = std::enable_if_t<std::is_integral_v<T> && std::is_unsigned_v<T>, bool>;
+
+//----------------------------------------------------------------------------------------------------------------
+
     class value
     {
     private:
@@ -84,13 +102,13 @@ namespace msgpackcpp
         value(std::nullptr_t);
         value(bool v);
 
-        template<class Int, std::enable_if_t<std::is_integral_v<Int> && std::is_signed_v<Int>, bool> = true>
+        template<class Int, check_sint<Int> = true>
         value(Int v);
 
-        template<class UInt, std::enable_if_t<std::is_integral_v<UInt> && std::is_unsigned_v<UInt>, bool> = true>
+        template<class UInt, check_uint<UInt> = true>
         value(UInt v);
 
-        template<class Real, std::enable_if_t<std::is_floating_point_v<Real>, bool> = true>
+        template<class Real, check_float<Real> = true>
         value(Real v);
 
         value(const char* v);
@@ -153,10 +171,10 @@ namespace msgpackcpp
     
 //----------------------------------------------------------------------------------------------------------------
 
-    template<class UInt, std::enable_if_t<std::is_integral_v<UInt> && std::is_unsigned_v<UInt>, bool> = true>
+    template<class UInt, check_uint<UInt> = true>
     void serialize(sink_base& out, UInt v);
 
-    template<class Int, std::enable_if_t<std::is_integral_v<Int> && std::is_signed_v<Int>, bool> = true>
+    template<class Int, check_sint<Int> = true>
     void serialize(sink_base& out, Int v);
 
     template<class Int, std::enable_if_t<std::is_integral_v<Int>, bool> = true>
@@ -167,7 +185,7 @@ namespace msgpackcpp
     void serialize(sink_base& out, float v);
     void serialize(sink_base& out, double v);
 
-    template<class Float, std::enable_if_t<std::is_floating_point_v<Float>, bool> = true>
+    template<class Float, check_float<Float> = true>
     void deserialize(source_base& in, Float& v);
 
 //----------------------------------------------------------------------------------------------------------------
@@ -292,16 +310,6 @@ namespace msgpackcpp
 
 //----------------------------------------------------------------------------------------------------------------
 
-    template<class Byte>
-    constexpr bool is_byte = std::is_same_v<Byte, char>     || 
-                             std::is_same_v<Byte, uint8_t>  ||
-                             std::is_same_v<Byte, int8_t>;
-
-    template<class Byte>
-    using check_byte = std::enable_if_t<is_byte<Byte>, bool>;
-
-//----------------------------------------------------------------------------------------------------------------
-
     constexpr uint16_t byte_swap16(uint16_t v)
     {
         return static_cast<uint16_t>(((v & 0x00FF) << 8) | ((v & 0xFF00) >> 8));
@@ -346,13 +354,13 @@ namespace msgpackcpp
     
 //----------------------------------------------------------------------------------------------------------------
 
-    template<class Int, std::enable_if_t<std::is_integral_v<Int> && std::is_signed_v<Int>, bool>>
+    template<class Int, check_sint<Int>>
     inline value::value(Int v) : val{static_cast<int64_t>(v)} {}
 
-    template<class UInt, std::enable_if_t<std::is_integral_v<UInt> && std::is_unsigned_v<UInt>, bool>>
+    template<class UInt, check_uint<UInt>>
     inline value::value(UInt v) : val{static_cast<uint64_t>(v)} {}
 
-    template<class Real, std::enable_if_t<std::is_floating_point_v<Real>, bool>>
+    template<class Real, check_float<Real>>
     inline value::value(Real v) : val{static_cast<double>(v)} {}
 
 //----------------------------------------------------------------------------------------------------------------
@@ -388,13 +396,27 @@ namespace msgpackcpp
         MSGPACK_MAP16       = 0xde,
         MSGPACK_MAP32       = 0xdf
     };
-    
+
+    constexpr bool format_is_bool(uint8_t f)        {return f == MSGPACK_FALSE || f == MSGPACK_TRUE;}
+    constexpr bool format_is_float(uint8_t f)       {return f == MSGPACK_F32 || f == MSGPACK_F64;}
+    constexpr bool format_is_fixint_pos(uint8_t f)  {return f <= MSGPACK_FIXINT_POS;}
+    constexpr bool format_is_uint(uint8_t f)        {return format_is_fixint_pos(f) || f == MSGPACK_U8 || f == MSGPACK_U16 || f == MSGPACK_U32 || f == MSGPACK_U64;}
+    constexpr bool format_is_fixint_neg(uint8_t f)  {return (f & 0b11100000) == MSGPACK_FIXINT_NEG;}
+    constexpr bool format_is_sint(uint8_t f)        {return format_is_fixint_neg(f) || f == MSGPACK_I8 || f == MSGPACK_I16 || f == MSGPACK_I32 || f == MSGPACK_I64;}
+    constexpr bool format_is_fixstr(uint8_t f)      {return (f & 0b11100000) == MSGPACK_FIXSTR;}
+    constexpr bool format_is_string(uint8_t f)      {return format_is_fixstr(f) || f == MSGPACK_STR8 || f == MSGPACK_STR16 || f == MSGPACK_STR32;}
+    constexpr bool format_is_binary(uint8_t f)      {return f == MSGPACK_BIN8 || f == MSGPACK_BIN16 || f == MSGPACK_BIN32;}
+    constexpr bool format_is_fixarr(uint8_t f)      {return (f & 0b11110000) == MSGPACK_FIXARR;}
+    constexpr bool format_is_array(uint8_t f)       {return format_is_fixarr(f) || f == MSGPACK_ARR16 || f == MSGPACK_ARR32;}
+    constexpr bool format_is_fixmap(uint8_t f)      {return (f & 0b11110000) == MSGPACK_FIXMAP;}
+    constexpr bool format_is_map(uint8_t f)         {return format_is_fixmap(f) || f == MSGPACK_MAP16 || f == MSGPACK_MAP32;}
+
 //----------------------------------------------------------------------------------------------------------------
 
     inline void serialize(sink_base& out, std::nullptr_t)
     {
         constexpr uint8_t format = MSGPACK_NIL;
-        out.write((const char*)&format, 1);  
+        out.write((const char*)&format, 1);
     }
 
     inline void deserialize(source_base& in, std::nullptr_t)
@@ -413,18 +435,23 @@ namespace msgpackcpp
         out.write((const char*)&format, 1);  
     }
 
+    inline void deserialize_(source_base& /*in*/, uint8_t format, bool& v)
+    {
+        if      (format == MSGPACK_FALSE) v = false;
+        else if (format == MSGPACK_TRUE)  v = true;
+        else throw std::system_error(BAD_FORMAT);
+    }
+
     inline void deserialize(source_base& in, bool& v)
     {
-        uint8_t tmp{};
-        in.read((char*)&tmp, 1);
-        if      (tmp == MSGPACK_FALSE) v = false;
-        else if (tmp == MSGPACK_TRUE)  v = true;
-        else throw std::system_error(BAD_FORMAT);
+        uint8_t format{};
+        in.read((char*)&format, 1);
+        deserialize_(in, format, v);
     }
 
 //----------------------------------------------------------------------------------------------------------------
 
-    template<class UInt, std::enable_if_t<std::is_integral_v<UInt> && std::is_unsigned_v<UInt>, bool>>
+    template<class UInt, check_uint<UInt>>
     inline void serialize(sink_base& out, UInt v)
     {
         if (v <= MSGPACK_FIXINT_POS)
@@ -467,7 +494,7 @@ namespace msgpackcpp
         }
     }
 
-    template<class Int, std::enable_if_t<std::is_integral_v<Int> && std::is_signed_v<Int>, bool>>
+    template<class Int, check_sint<Int>>
     inline void serialize(sink_base& out, Int v)
     {
         if (v >= 0)
@@ -516,18 +543,15 @@ namespace msgpackcpp
         }
     }
 
-    template<class Int, std::enable_if_t<std::is_integral_v<Int>, bool>>
-    inline void deserialize(source_base& in, Int& v)
+    template<class Int, std::enable_if_t<std::is_integral_v<Int>, bool> = true>
+    inline void deserialize_(source_base& in, uint8_t format, Int& v)
     {
-        uint8_t format{};
-        in.read((char*)&format, 1);
-
-        if (format <= MSGPACK_FIXINT_POS)
+        if (format_is_fixint_pos(format))
         {
             // positive fixint (7-bit positive integer)
             v = format;
         }
-        else if ((format & 0b11100000) == MSGPACK_FIXINT_NEG)
+        else if (format_is_fixint_neg(format))
         {
             // negative fixing (5-bit negative integer)
             v = bit_cast<int8_t>(format);
@@ -592,6 +616,14 @@ namespace msgpackcpp
             throw std::system_error(BAD_FORMAT);
     }
 
+    template<class Int, std::enable_if_t<std::is_integral_v<Int>, bool>>
+    inline void deserialize(source_base& in, Int& v)
+    {
+        uint8_t format{};
+        in.read((char*)&format, 1);
+        deserialize_(in, format, v);
+    }
+
 //----------------------------------------------------------------------------------------------------------------
 
     inline void serialize(sink_base& out, float v)
@@ -610,12 +642,9 @@ namespace msgpackcpp
         out.write((const char*)&tmp, 8);
     }
 
-    template<class Float, std::enable_if_t<std::is_floating_point_v<Float>, bool>>
-    inline void deserialize(source_base& in, Float& v)
+    template<class Float, check_float<Float> = true>
+    inline void deserialize_(source_base& in, uint8_t format, Float& v)
     {
-        uint8_t format{};
-        in.read((char*)&format, 1);
-
         if (format == MSGPACK_F32)
         {
             uint32_t tmp{};
@@ -630,6 +659,14 @@ namespace msgpackcpp
         }
         else
             throw std::system_error(BAD_FORMAT);
+    }
+
+    template<class Float, check_float<Float>>
+    inline void deserialize(source_base& in, Float& v)
+    {
+        uint8_t format{};
+        in.read((char*)&format, 1);
+        deserialize_(in, format, v);
     }
 
 //----------------------------------------------------------------------------------------------------------------
@@ -664,12 +701,9 @@ namespace msgpackcpp
         }
     }
 
-    inline void deserialize_str_size(source_base& in, uint32_t& size)
+    inline void deserialize_str_size_(source_base& in, uint8_t format, uint32_t& size)
     {
-        uint8_t format{};
-        in.read((char*)&format, 1);
-
-        if ((format & 0b11100000) == MSGPACK_FIXSTR)
+        if (format_is_fixstr(format))
         {
             size = format & 0b00011111;
         }
@@ -695,6 +729,13 @@ namespace msgpackcpp
             throw std::system_error(BAD_FORMAT);
     }
 
+    inline void deserialize_str_size(source_base& in, uint32_t& size)
+    {
+        uint8_t format{};
+        in.read((char*)&format, 1);
+        deserialize_str_size_(in, format, size);
+    }
+
     inline void serialize(sink_base& out, std::string_view v)
     {
         serialize_str_size(out, v.size());
@@ -706,12 +747,19 @@ namespace msgpackcpp
         serialize(out, std::string_view(c_str));
     }
 
-    inline void deserialize(source_base& in, std::string& v)
+    inline void deserialize_(source_base& in, uint8_t format, std::string& v)
     {
         uint32_t size{};
-        deserialize_str_size(in, size);
+        deserialize_str_size_(in, format, size);
         v.resize(size);
         in.read(v.data(), size);
+    }
+
+    inline void deserialize(source_base& in, std::string& v)
+    {
+        uint8_t format{};
+        in.read((char*)&format, 1);
+        deserialize_(in, format, v);
     }
 
 //----------------------------------------------------------------------------------------------------------------
@@ -741,11 +789,8 @@ namespace msgpackcpp
         }
     }
 
-    inline void deserialize_bin_size(source_base& in, uint32_t& size)
+    inline void deserialize_bin_size_(source_base& in, uint8_t format, uint32_t& size)
     {
-        uint8_t format{};
-        in.read((char*)&format, 1);
-
         if (format == MSGPACK_BIN8)
         {
             uint8_t size8{};
@@ -768,6 +813,13 @@ namespace msgpackcpp
             throw std::system_error(BAD_FORMAT);
     }
 
+    inline void deserialize_bin_size(source_base& in, uint32_t& size)
+    {
+        uint8_t format{};
+        in.read((char*)&format, 1);
+        deserialize_bin_size_(in, format, size);
+    }
+
     inline void serialize_bin_array(sink_base& out, const char* data, const uint32_t len)
     {
         serialize_bin_size(out, len);
@@ -787,12 +839,20 @@ namespace msgpackcpp
     }
 
     template<class Alloc>
-    inline void deserialize(source_base& in, std::vector<char, Alloc>& v)
+    inline void deserialize_(source_base& in, uint8_t format, std::vector<char, Alloc>& v)
     {
         uint32_t size{};
-        deserialize_bin_size(in, size);
+        deserialize_bin_size_(in, format, size);
         v.resize(size);
         in.read(v.data(), size);
+    }
+
+    template<class Alloc>
+    inline void deserialize(source_base& in, std::vector<char, Alloc>& v)
+    {
+        uint8_t format{};
+        in.read((char*)&format, 1);
+        deserialize_(in, format, v);
     }
 
     template<class Alloc>
@@ -861,12 +921,9 @@ namespace msgpackcpp
         }
     }
 
-    inline void deserialize_array_size(source_base& in, uint32_t& size)
+    inline void deserialize_array_size_(source_base& in, uint8_t format, uint32_t& size)
     {
-        uint8_t format{};
-        in.read((char*)&format, 1);
-
-        if ((format & 0b11110000) == MSGPACK_FIXARR)
+        if (format_is_fixarr(format))
         {
             size = format & 0b00001111;
         }
@@ -884,6 +941,13 @@ namespace msgpackcpp
         }
         else
             throw std::system_error(BAD_FORMAT);
+    }
+
+    inline void deserialize_array_size(source_base& in, uint32_t& size)
+    {
+        uint8_t format{};
+        in.read((char*)&format, 1);
+        deserialize_array_size_(in, format, size);
     }
 
     template<class T, class Alloc>
@@ -948,12 +1012,9 @@ namespace msgpackcpp
         }
     }
 
-    inline void deserialize_map_size(source_base& in, uint32_t& size)
+    inline void deserialize_map_size_(source_base& in, uint8_t format, uint32_t& size)
     {
-        uint8_t format{};
-        in.read((char*)&format, 1);
-
-        if ((format & 0b11110000) == MSGPACK_FIXMAP)
+        if (format_is_fixmap(format))
         {
             size = format & 0b00001111;
         }
@@ -973,7 +1034,14 @@ namespace msgpackcpp
             throw std::system_error(BAD_FORMAT);
     }
 
-     template <
+    inline void deserialize_map_size(source_base& in, uint32_t& size)
+    {
+        uint8_t format{};
+        in.read((char*)&format, 1);
+        deserialize_map_size_(in, format, size);
+    }
+
+    template <
         class K, 
         class V, 
         class Compare,

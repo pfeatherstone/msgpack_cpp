@@ -41,13 +41,6 @@ namespace msgpackcpp
             std::memcpy(buf, data.data() + offset, nbytes);
             offset += nbytes;
         }
-
-        uint8_t peak() override final
-        {
-            if (offset >= data.size())
-                throw std::system_error(OUT_OF_DATA);
-            return static_cast<uint8_t>(data[offset]);
-        }
     };
 
     template<class Byte, class Alloc, check_byte<Byte> = true>
@@ -83,14 +76,6 @@ namespace msgpackcpp
             in.read(buf, nbytes);
             if (in.gcount() != (long)nbytes)
                 throw std::system_error(OUT_OF_DATA);
-        }
-
-        uint8_t peak() override final
-        {
-            uint8_t b = static_cast<uint8_t>(in.peek());
-            if (!in || !in.good() || in.eof())
-                throw std::system_error(OUT_OF_DATA);
-            return b;
         }
     };
 
