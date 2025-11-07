@@ -37,9 +37,12 @@ int main()
     mynamespace::my_struct a = {1, 3.14, "hello there", {0, 1, 2, 3, 4}};
     mynamespace::my_struct b;
 
+    // Serialize
     std::vector<char> buf;
     auto out = sink(buf);
     serialize(out, a);
+
+    // Deserialize
     auto in = source(buf);
     deserialize(in, b);
 

@@ -5,73 +5,56 @@
 # msgpack_cpp
 C++ header-only msgpack library
 
-## Example
+## Examples
 
-### High-level objects
+### Basic types
 
-#### `std::tuple`
+```cpp
+#include "msgpack.h"
+#include "msgpack_sinks.h"
 
-```
-using namespace msgpackcpp;
+int main()
+{
+    using msgpackcpp::serialize;
+    using msgpackcpp::deserialize;
+    using msgpackcpp::sink;
+    using msgpackcpp::source;
 
-std::tuple<int, float, std::string> a(1, 3.14, "Hello there!");
+    // Some data
+    int                         a = 1, aa;
+    double                      b = 3.15, bb;
+    std::string                 c = "hello there", cc;
+    std::vector<char>           d = {0,1,2,3,4,5,6,7,8,9}, dd;
+    std::map<std::string, int>  e = {{"a", 1}, {"b", 2}}, ee;
 
-std::vector<char> buf;
 
-// Creates a lambda which captures `buf` by reference and appends data to it when invoked
-auto out = sink(buf); 
+    // Serialize
+    std::vector<char> buf;
+    auto out = sink(buf);
+    serialize(out, a);
+    serialize(out, b);
+    serialize(out, c);
+    serialize(out, d);
+    serialize(out, e);
 
-// The first argument can be any function object with signature void(const char* data, size_t len) (when C++20 is used, it satisfies the sink_type concept)
-serialize(out, a);
-
-// Creates a mutable lambda which captures `buf` by reference and reads data from it when invoked
-auto in = source(buf); 
-
-// The first argument can be any function object with signature void(char* data, size_t len) (when C++20 is used, it satisfies the source_type concept)
-deserialize(in, a);
-```
-
-#### `std::vector`
-
-```
-using namespace msgpackcpp;
-
-std::vector<int> v1(10);
-std::iota(begin(v1), end(v1), 0);
-std::vector<int> v2;
-
-// You can also serialize into an ostream object
-std::ostringstream sout;
-auto out = sink(sout);
-serialize(out, v1);
-
-// Deserialize from an istream object
-std::istringstream sin(sout.str());
-auto in = source(sin);
-deserialize(in, v2);
+    // Deserialize
+    auto in = source(buf);
+    deserialize(in, aa);
+    deserialize(in, bb);
+    deserialize(in, cc);
+    deserialize(in, dd);
+    deserialize(in, ee);
+}
 ```
 
-#### `std::map`
+### Custom types
 
-```
-using namespace msgpackcpp;
+Option 1 : define `serialize()` and `deserialize()` functions in the same namespace as your custom struct
 
-std::map<std::string, int> a = {{"a", 1}, {"b", 2}};
-std::map<std::string, int> b;
+```cpp
+#include "msgpack.h"
+#include "msgpack_sinks.h"
 
-std::vector<char> buf;
-auto out = sink(buf);
-serialize(out, a);
-
-auto in = source(buf);
-deserialize(in, b);
-```
-
-#### Custom object
-
-Option 1 : define `serialize()` and `deserialize()` functions in the same namespace as your custom struct. This will get picked up by ADL.
-
-```
 namespace mynamespace
 {
     struct my_struct1
@@ -83,45 +66,52 @@ namespace mynamespace
     };
 
     template<SINK_TYPE Sink>
-    void serialize(Sink& out, const my_struct1& obj)
+    void serialize(Sink& out, const my_struct& obj)
     {
-        using msgpackcpp::serialize;
-        serialize(out, std::tie(obj.my_int, obj.my_float, obj.my_string, obj.my_audio));
+        auto packed = std::tie(obj.my_int, obj.my_float, obj.my_string, obj.my_audio);
+        serialize(out, packed);
     }
 
     template<SOURCE_TYPE Source>
-    void deserialize(Source& in, my_struct1& obj)
+    void deserialize(Source& in, my_struct& obj)
     {
-        using msgpackcpp::deserialize;
-        auto members = std::tie(obj.my_int, obj.my_float, obj.my_string, obj.my_audio);
-        deserialize(in, members);
-    }   
+        auto packed = std::tie(obj.my_int, obj.my_float, obj.my_string, obj.my_audio);
+        deserialize(in, packed);
+    }  
 }
 
-...
+int main()
+{
+    using msgpackcpp::serialize;
+    using msgpackcpp::deserialize;
+    using msgpackcpp::sink;
+    using msgpackcpp::source;
 
-using namespace msgpackcpp;
+    mynamespace::my_struct a = {1, 3.14, "hello there", {0, 1, 2, 3, 4}};
+    mynamespace::my_struct b;
 
-mynamespace::my_struct1 a = {1, 3.14, "hello there", {0, 1, 2, 3, 4}};
-mynamespace::my_struct1 b;
+    // Serialize
+    std::stringstream buf;
+    auto out = sink(buf);
+    serialize(out, a);
 
-std::vector<char> buf;
-auto out = sink(buf);
-serialize(out, a);
-
-auto in = source(buf);
-deserialize(in, b);
+    // Deserialize
+    auto in = source(buf);
+    deserialize(in, b);
+}
 ```
 
 Option 2 : use Boost.Describe to describe your struct
 
-```
+```cpp
 #include <boost/describe/class.hpp>
-#include <msgpack_describe.h>
+#include "msgpack.h"
+#include "msgpack_sinks.h"
+#include "msgpack_describe.h"
 
-namespace mynamespace2
+namespace mynamespace
 {
-    struct my_struct2
+    struct my_struct1
     {
         int                 my_int{};
         float               my_float{};
@@ -129,27 +119,28 @@ namespace mynamespace2
         std::vector<short>  my_audio;
     };
 
-    BOOST_DESCRIBE_STRUCT(my_struct2, (), (my_int, my_float, my_string, my_audio)) 
+    BOOST_DESCRIBE_STRUCT(my_struct, (), (my_int, my_float, my_string, my_audio))
 }
 
-...
+int main()
+{
+    using msgpackcpp::serialize;
+    using msgpackcpp::deserialize;
+    using msgpackcpp::sink;
+    using msgpackcpp::source;
 
-using namespace msgpackcpp;
+    mynamespace::my_struct a = {1, 3.14, "hello there", {0, 1, 2, 3, 4}};
+    mynamespace::my_struct b;
 
-mynamespace2::my_struct2 a = {1, 3.14, "hello there", {0, 1, 2, 3, 4}};
-mynamespace2::my_struct2 b;
+    // Serialize
+    std::stringstream buf;
+    auto out = sink(buf);
+    serialize(out, a);
 
-std::vector<char> buf;
-auto out = sink(buf);
-
-// You can serialize your struct like a std::map, 
-// where the member variable names are string keys. 
-// Or you can serialize like a std::tuple where there are no keys. 
-// The latter creates a smaller serialized buffer.
-serialize(out, a, /*as_map=*/true); 
-
-auto in = source(buf);
-deserialize(in, b, /*as_map=*/true);
+    // Deserialize
+    auto in = source(buf);
+    deserialize(in, b);
+}
 ```
 
 ## Installation
