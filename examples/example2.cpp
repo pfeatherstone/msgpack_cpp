@@ -15,16 +15,13 @@ namespace mynamespace
     template<SINK_TYPE Sink>
     void serialize(Sink& out, const my_struct& obj)
     {
-        using msgpackcpp::serialize;
-        serialize(out, std::tie(obj.my_int, obj.my_float, obj.my_string, obj.my_audio));
+        serialize_all(out, obj.my_int, obj.my_float, obj.my_string, obj.my_audio);
     }
 
     template<SOURCE_TYPE Source>
     void deserialize(Source& in, my_struct& obj)
     {
-        using msgpackcpp::deserialize;
-        auto members = std::tie(obj.my_int, obj.my_float, obj.my_string, obj.my_audio);
-        deserialize(in, members);
+        deserialize_all(in, obj.my_int, obj.my_float, obj.my_string, obj.my_audio);
     }  
 }
 

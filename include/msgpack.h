@@ -318,6 +318,14 @@ namespace msgpackcpp
     void deserialize(Source& in, std::tuple<Args...>& tpl);
 
 //----------------------------------------------------------------------------------------------------------------
+
+    template<SINK_TYPE Sink, class... Args>
+    void serialize_all(Sink& out, const Args&... args);
+
+    template<SOURCE_TYPE Source, class... Args>
+    void deserialize_all(Source& in, Args&... args);
+
+//----------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------
 // DEFINITIONS
 //----------------------------------------------------------------------------------------------------------------
@@ -1221,6 +1229,20 @@ namespace msgpackcpp
         std::apply([&](auto&&... args) {
             (deserialize(in, std::forward<decltype(args)>(args)),...);
         }, tpl);
+    }
+
+//----------------------------------------------------------------------------------------------------------------
+
+    template<SINK_TYPE Sink, class... Args>
+    void serialize_all(Sink& out, const Args&... args)
+    {
+        (serialize(out, args),...);
+    }
+
+    template<SOURCE_TYPE Source, class... Args>
+    void deserialize_all(Source& in, Args&... args)
+    {
+        (deserialize(in, args), ...);
     }
 
 //----------------------------------------------------------------------------------------------------------------
