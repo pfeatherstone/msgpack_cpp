@@ -150,3 +150,7 @@ Just copy the contents of the include folder in your project with `msgpack_descr
 ## Dependencies
 
 You just need a C++17 compiler. If you want to avail yourself of the convenient Boost.Describe integration in `msgpack_describe.h`, then you'll require that Boost library.
+
+## Documentation
+
+There is none. Hopefully the code is readable.
