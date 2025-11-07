@@ -33,6 +33,7 @@ int main()
     auto in = source(buf);
     deserialize(in, b);
 
+    printf("Serialized buffer size %zu\n", buf.size());
     printf("%d %f %s [", b.my_int, b.my_float, b.my_string.c_str());
     for (auto s : b.my_audio) printf("%hd ", s);
     printf("]\n");

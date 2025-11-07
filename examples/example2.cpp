@@ -15,13 +15,15 @@ namespace mynamespace
     template<SINK_TYPE Sink>
     void serialize(Sink& out, const my_struct& obj)
     {
-        serialize_all(out, obj.my_int, obj.my_float, obj.my_string, obj.my_audio);
+        auto packed = std::tie(obj.my_int, obj.my_float, obj.my_string, obj.my_audio);
+        serialize(out, packed);
     }
 
     template<SOURCE_TYPE Source>
     void deserialize(Source& in, my_struct& obj)
     {
-        deserialize_all(in, obj.my_int, obj.my_float, obj.my_string, obj.my_audio);
+        auto packed = std::tie(obj.my_int, obj.my_float, obj.my_string, obj.my_audio);
+        deserialize(in, packed);
     }  
 }
 
@@ -41,6 +43,7 @@ int main()
     auto in = source(buf);
     deserialize(in, b);
 
+    printf("Serialized buffer size %zu\n", buf.size());
     printf("%d %f %s [", b.my_int, b.my_float, b.my_string.c_str());
     for (auto s : b.my_audio) printf("%hd ", s);
     printf("]\n");
