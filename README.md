@@ -3,7 +3,7 @@
 ![Windows](https://github.com/pfeatherstone/msgpack_cpp/actions/workflows/windows.yml/badge.svg)
 
 # msgpack_cpp
-C++ header-only msgpack library that supports (de)serializing types directly, including custom types, as well as a dicitionary type `msgpackcpp::value` a la `nlohmann::json` or `boost::json::value`. 
+C++ header-only msgpack library that supports (de)serializing types directly, including custom types, as well as a dicitionary type `msgpackcpp::value` à la `nlohmann::json` or `boost::json::value`. 
 
 ## Examples
 
@@ -49,7 +49,9 @@ int main()
 
 ### Custom types
 
-Option 1 : define `serialize()` and `deserialize()` functions in the same namespace as your custom struct
+Option 1 : define `serialize()` and `deserialize()` functions in the same namespace as your custom struct. 
+Note the use of std::tie. std::tuple is serialized like a msgpack [array](https://github.com/msgpack/msgpack/blob/master/spec.md#array-format-family). 
+This ensures your custom type is serialized into a single msgpack object.
 
 ```cpp
 #include "msgpack.h"
@@ -101,7 +103,12 @@ int main()
 }
 ```
 
-Option 2 : use Boost.Describe to describe your struct
+Option 2 : use Boost.Describe to describe your struct. This automatically makes the following functions available:
+* `serialize(Sink& out, const CustomType& obj, bool as_map = false)`
+* `deserialize(Source& in, CustomType& obj, bool as_map = false)`
+
+When `as_map == false` then you get exactly the same behaviour as above. When `as_map == true` your type is serialized like a msgpack [map](https://github.com/msgpack/msgpack/blob/master/spec.md#map-format-family) where the keys are the member variable names of your struct.
+
 
 ```cpp
 #include <boost/describe/class.hpp>
@@ -135,11 +142,13 @@ int main()
     // Serialize
     std::stringstream buf;
     auto out = sink(buf);
-    serialize(out, a);
+    serialize(out, a, /*as_map=*/false); // serialize to a msgpack array
+    serialize(out, a, /*as_map=*/true);  // serialize to a msgpack map
 
     // Deserialize
     auto in = source(buf);
-    deserialize(in, b);
+    deserialize(in, b, /*as_map=*/false);
+    deserialize(in, b, /*as_map=*/true);
 }
 ```
 
@@ -205,6 +214,32 @@ Just copy the contents of the include folder in your project with `msgpack_descr
 ## Dependencies
 
 You just need a C++17 compiler. If you want to avail yourself of the convenient Boost.Describe integration in `msgpack_describe.h`, then you'll require that Boost library.
+
+## API
+
+The library provides the following functions for basic and STL types:
+
+```cpp
+namespace msgpackcpp
+{
+    template<SINK_TYPE Sink, class Type>
+    void serialize(Sink& out, const Type& obj);
+
+    template<SOURCE_TYPE Source, class Type>
+    void deserialize(Source& in, Type& obj);
+}
+```
+
+where:
+* `out` is a templated function object with signature `void(const char* data, size_t len)` which writes serialized data.
+* `in` is a templated function object with signature `void(char* data, size_t len)` which reads serialized data.
+
+When c++20 is enabled `SINK_TYPE` and `SOURCE_TYPE` are concepts which check those signatures.
+
+The library also provides functions `sink()` and `source()` which take a type and return function objects (c++ lambda) which satisfy the `SINK_TYPE` and `SOURCE_TYPE` concepts. Currently overloads for `std::vector<char>` and `std::iostream` are provided though users can write their own sink/source types.
+
+This library also provides a dictionary type `msgpackcpp::value` very similar to [nlohmann::json](https://json.nlohmann.me/api/basic_json/) or `boost::json::value` which can be (de)serialized, this type using member functions `.pack()` and `.unpack()`.
+Conversions from `msgpackcpp::value` to and from custom types is not supported and discouraged. This library allows you to serialize and deserialized types directly without having to go through `msgpackkcpp::value`.
 
 ## Documentation
 
