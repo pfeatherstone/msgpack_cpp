@@ -238,8 +238,8 @@ When c++20 is enabled `SINK_TYPE` and `SOURCE_TYPE` are concepts which check tho
 
 The library also provides functions `sink()` and `source()` which take a type and return function objects (c++ lambda) which satisfy the `SINK_TYPE` and `SOURCE_TYPE` concepts. Currently overloads for `std::vector<char>` and `std::iostream` are provided though users can write their own sink/source types.
 
-This library also provides a dictionary type `msgpackcpp::value` very similar to [nlohmann::json](https://json.nlohmann.me/api/basic_json/) or `boost::json::value` which can be (de)serialized, this type using member functions `.pack()` and `.unpack()`.
-Conversions from `msgpackcpp::value` to and from custom types is not supported and discouraged. This library allows you to serialize and deserialized types directly without having to go through `msgpackkcpp::value`.
+This library also provides a dictionary type `msgpackcpp::value` very similar to [nlohmann::json](https://json.nlohmann.me/api/basic_json/) or `boost::json::value` which can be (de)serialized using member functions `.pack()` and `.unpack()`.
+Conversions from `msgpackcpp::value` to and from custom types is not supported and discouraged. This library allows you to serialize and deserialized types directly without having to go through `msgpackcpp::value`.
 
 ## Documentation
 
