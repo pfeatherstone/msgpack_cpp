@@ -238,12 +238,6 @@ namespace msgpackcpp
 //----------------------------------------------------------------------------------------------------------------
 
     template<SINK_TYPE Sink>
-    void serialize_str_size(Sink& out, const uint32_t size);
-
-    template<SOURCE_TYPE Source>
-    void deserialize_str_size(Source& in, uint32_t& size);
-
-    template<SINK_TYPE Sink>
     void serialize(Sink& out, std::string_view v);
 
     template<SINK_TYPE Sink>
@@ -253,15 +247,6 @@ namespace msgpackcpp
     void deserialize(Source& in, std::string& v);
 
 //----------------------------------------------------------------------------------------------------------------
-
-    template<SINK_TYPE Sink>
-    void serialize_bin_size(Sink& out, const uint32_t len);
-
-    template<SOURCE_TYPE Source>
-    void deserialize_bin_size(Source& in, uint32_t& size);
-
-    template<SINK_TYPE Sink>
-    void serialize_bin_array(Sink& out, const char* data, const uint32_t len);
 
     template<SINK_TYPE Sink, class Byte, class Alloc, check_binary<Byte> = true>
     void serialize(Sink& out, const std::vector<Byte, Alloc>& v);
