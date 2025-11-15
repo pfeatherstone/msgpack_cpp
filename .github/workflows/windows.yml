@@ -19,10 +19,20 @@ jobs:
       - name: Install dependencies
         run: choco install --no-progress --yes cmake
 
-      - name: Run CMake configuration and build
+      - name: Build tests
         run: |
           cmake tests -B build
           cmake --build build --config RelWithDebInfo --parallel
 
       - name: Run Unit Tests
         run: build\RelWithDebInfo\tests.exe
+
+      - name: Build examples
+        run: |
+          cmake examples -B build2
+          cmake --build build2 --config RelWithDebInfo --parallel
+
+      - name: Build benchmarks
+        run: |
+          cmake bench -B build3
+          cmake --build build3 --config RelWithDebInfo --parallel

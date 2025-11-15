@@ -48,7 +48,7 @@ jobs:
           sudo apt update
           sudo apt install -y ninja-build cmake ${{ matrix.packages }}
 
-      - name: Run CMake configuration and build
+      - name: Build tests
         run: |
           cmake tests -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -58,3 +58,19 @@ jobs:
 
       - name: Run Unit Tests
         run: ./build/tests
+
+      - name: Build examples
+        run: |
+          cmake examples -B build2 -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }}
+          cmake --build build2 --parallel
+
+      - name: Build benchmarks
+        run: |
+          cmake bench -B build3 -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }}
+          cmake --build build3 --parallel

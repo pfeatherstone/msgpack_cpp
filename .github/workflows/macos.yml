@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: brew update && brew install ninja cmake
 
-      - name: Run CMake configuration and build
+      - name: Build tests
         run: |
           cmake tests -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DCMAKE_C_COMPILER=clang \
@@ -27,3 +27,17 @@ jobs:
 
       - name: Run Unit Tests
         run: ./build/tests
+
+      - name: Build examples
+        run: |
+          cmake examples -B build2 -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++
+          cmake --build build2 --parallel
+
+      - name: Build benchmarks
+        run: |
+          cmake bench -B build3 -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++
+          cmake --build build3 --parallel
