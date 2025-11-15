@@ -38,12 +38,8 @@ const auto num_errors = [](const auto& buf1, const auto& buf2)
 template<class Int, class Generator>
 Int random_int(Generator& gen)
 {
-    if constexpr(std::is_same_v<Int, char>)
-        return static_cast<char>(std::uniform_int_distribution<int>{std::numeric_limits<char>::min(), std::numeric_limits<char>::max()}(gen));
-    else if constexpr(std::is_same_v<Int, int8_t>)
-        return static_cast<int8_t>(std::uniform_int_distribution<int>{std::numeric_limits<int8_t>::min(), std::numeric_limits<int8_t>::max()}(gen));
-    else if constexpr(std::is_same_v<Int, uint8_t>)
-        return static_cast<uint8_t>(std::uniform_int_distribution<int>{std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max()}(gen));
+    if constexpr(std::is_same_v<Int, char> || std::is_same_v<Int, int8_t> || std::is_same_v<Int, uint8_t>)
+        return std::uniform_int_distribution<int>{std::numeric_limits<Int>::min(), std::numeric_limits<Int>::max()}(gen);
     else
         return std::uniform_int_distribution<Int>{std::numeric_limits<Int>::min(), std::numeric_limits<Int>::max()}(gen);
 }
