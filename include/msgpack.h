@@ -550,6 +550,12 @@ namespace msgpackcpp
         return format;
     }
 
+    template<class T>
+    void store(char* buf, const T& obj)
+    {
+        std::memcpy(buf, &obj, sizeof(obj));
+    }
+
 //----------------------------------------------------------------------------------------------------------------
 
     template<SINK_TYPE Sink>
@@ -603,34 +609,34 @@ namespace msgpackcpp
         else if (v <= std::numeric_limits<uint8_t>::max())
         {
             // unsigned 8
-            constexpr uint8_t format = MSGPACK_U8;
-            const     uint8_t v8     = static_cast<uint8_t>(v);
-            out((const char*)&format, 1);
-            out((const char*)&v8, 1);
+            char buf[2];
+            buf[0] = MSGPACK_U8;
+            buf[1] = static_cast<uint8_t>(v);
+            out(buf, sizeof(buf));
         }
         else if (v <= std::numeric_limits<uint16_t>::max())
         {
             // unsigned 16
-            constexpr uint8_t format = MSGPACK_U16;
-            const     uint16_t v16   = host_to_b16(static_cast<uint16_t>(v));
-            out((const char*)&format, 1);
-            out((const char*)&v16, 2);
+            char buf[3];
+            buf[0] = MSGPACK_U16;
+            store(&buf[1], host_to_b16(static_cast<uint16_t>(v)));
+            out(buf, sizeof(buf));
         }    
         else if (v <= std::numeric_limits<uint32_t>::max())
         {
             // unsigned 32
-            constexpr uint8_t format = MSGPACK_U32;
-            const     uint32_t v32   = host_to_b32(static_cast<uint32_t>(v));
-            out((const char*)&format, 1);
-            out((const char*)&v32, 4);
+            char buf[5];
+            buf[0] = MSGPACK_U32;
+            store(&buf[1], host_to_b32(static_cast<uint32_t>(v)));
+            out(buf, sizeof(buf));
         }
         else
         {
             // unsigned 64
-            constexpr uint8_t format = MSGPACK_U64;
-            const     uint64_t v64   = host_to_b64(static_cast<uint64_t>(v));
-            out((const char*)&format, 1);
-            out((const char*)&v64, 8);
+            char buf[9];
+            buf[0] = MSGPACK_U64;
+            store(&buf[1], host_to_b64(static_cast<uint64_t>(v)));
+            out(buf, sizeof(buf));
         }
     }
 
@@ -652,34 +658,34 @@ namespace msgpackcpp
         else if (v >= std::numeric_limits<int8_t>::min())
         {
             // negative - int8
-            constexpr uint8_t format = MSGPACK_I8;
-            const     int8_t  v8     = static_cast<int8_t>(v);
-            out((const char*)&format, 1);
-            out((const char*)&v8, 1);
+            char buf[2];
+            buf[0] = MSGPACK_I8;
+            buf[1] = static_cast<int8_t>(v);
+            out(buf, sizeof(buf));
         }
         else if (v >= std::numeric_limits<int16_t>::min())
         {
             // negative - int16
-            constexpr uint8_t format = MSGPACK_I16;
-            const     uint16_t v16   = host_to_b16(bit_cast<uint16_t>(static_cast<int16_t>(v)));
-            out((const char*)&format, 1);
-            out((const char*)&v16, 2);
+            char buf[3];
+            buf[0] = MSGPACK_I16;
+            store(&buf[1], host_to_b16(bit_cast<uint16_t>(static_cast<int16_t>(v))));
+            out(buf, sizeof(buf));
         }    
         else if (v >= std::numeric_limits<int32_t>::min())
         {
             // negative - int32_t
-            constexpr uint8_t format = MSGPACK_I32;
-            const     uint32_t v32   = host_to_b32(bit_cast<uint32_t>(static_cast<int32_t>(v)));
-            out((const char*)&format, 1);
-            out((const char*)&v32, 4);
+            char buf[5];
+            buf[0] = MSGPACK_I32;
+            store(&buf[1], host_to_b32(bit_cast<uint32_t>(static_cast<int32_t>(v))));
+            out(buf, sizeof(buf));
         }
         else
         {
             // negative - int64_t
-            constexpr uint8_t format = MSGPACK_I64;
-            const     uint64_t v64   = host_to_b64(bit_cast<uint64_t>(static_cast<int64_t>(v)));
-            out((const char*)&format, 1);
-            out((const char*)&v64, 8);
+            char buf[9];
+            buf[0] = MSGPACK_I64;
+            store(&buf[1], host_to_b64(bit_cast<uint64_t>(static_cast<int64_t>(v))));
+            out(buf, sizeof(buf));
         }
     }
 
@@ -767,19 +773,19 @@ namespace msgpackcpp
     template<SINK_TYPE Sink>
     inline void serialize(Sink& out, float v)
     {
-        constexpr uint8_t  format   = MSGPACK_F32;
-        const     uint32_t tmp      = host_to_b32(bit_cast<uint32_t>(v)); 
-        out((const char*)&format, 1);
-        out((const char*)&tmp, 4);
+        char buf[5];
+        buf[0] = MSGPACK_F32;
+        store(&buf[1], host_to_b32(bit_cast<uint32_t>(v)));
+        out(buf, sizeof(buf));
     }
 
     template<SINK_TYPE Sink>
     inline void serialize(Sink& out, double v)
     {
-        constexpr uint8_t  format   = MSGPACK_F64;
-        const     uint64_t tmp      = host_to_b64(bit_cast<uint64_t>(v)); 
-        out((const char*)&format, 1);
-        out((const char*)&tmp, 8);
+        char buf[9];
+        buf[0] = MSGPACK_F64;
+        store(&buf[1], host_to_b64(bit_cast<uint64_t>(v)));
+        out(buf, sizeof(buf));
     }
 
     template<SOURCE_TYPE Source, class Float, check_float<Float> = true>
@@ -819,24 +825,24 @@ namespace msgpackcpp
         }
         else if (size < 256)
         {
-            constexpr uint8_t format = MSGPACK_STR8;
-            const     uint8_t size8  = static_cast<uint8_t>(size);
-            out((const char*)&format, 1);
-            out((const char*)&size8, 1);
+            char buf[2];
+            buf[0] = MSGPACK_STR8;
+            buf[1] = static_cast<uint8_t>(size);
+            out(buf, sizeof(buf));
         }
         else if (size < 65536)
         {
-            constexpr uint8_t  format = MSGPACK_STR16;
-            const     uint16_t size16 = host_to_b16(static_cast<uint16_t>(size));
-            out((const char*)&format, 1);
-            out((const char*)&size16, 2);
+            char buf[3];
+            buf[0] = MSGPACK_STR16;
+            store(&buf[1], host_to_b16(static_cast<uint16_t>(size)));
+            out(buf, sizeof(buf));
         }
         else 
         {
-            constexpr uint8_t  format = MSGPACK_STR32;
-            const     uint32_t size32 = host_to_b32(static_cast<uint32_t>(size));
-            out((const char*)&format, 1);
-            out((const char*)&size32, 4);
+            char buf[5];
+            buf[0] = MSGPACK_STR32;
+            store(&buf[1], host_to_b32(static_cast<uint32_t>(size)));
+            out(buf, sizeof(buf));
         }
     }
 
@@ -910,24 +916,24 @@ namespace msgpackcpp
     {
         if (len < 256)
         {
-            constexpr uint8_t format = MSGPACK_BIN8;
-            const     uint8_t size8  = static_cast<uint8_t>(len);
-            out((const char*)&format, 1);
-            out((const char*)&size8, 1);
+            char buf[2];
+            buf[0] = MSGPACK_BIN8;
+            buf[1] = static_cast<uint8_t>(len);
+            out(buf, sizeof(buf));
         }
         else if (len < 65536)
         {
-            constexpr uint8_t  format = MSGPACK_BIN16;
-            const     uint16_t size16 = host_to_b16(static_cast<uint16_t>(len));
-            out((const char*)&format, 1);
-            out((const char*)&size16, 2);
+            char buf[3];
+            buf[0] = MSGPACK_BIN16;
+            store(&buf[1], host_to_b16(static_cast<uint16_t>(len)));
+            out(buf, sizeof(buf));
         }
         else 
         {
-            constexpr uint8_t  format = MSGPACK_BIN32;
-            const     uint32_t size32 = host_to_b32(static_cast<uint32_t>(len));
-            out((const char*)&format, 1);
-            out((const char*)&size32, 4);
+            char buf[5];
+            buf[0] = MSGPACK_BIN32;
+            store(&buf[1], host_to_b32(static_cast<uint32_t>(len)));
+            out(buf, sizeof(buf));
         }
     }
 
@@ -1018,17 +1024,17 @@ namespace msgpackcpp
         }
         else if (size < 65536)
         {
-            constexpr uint8_t  format = MSGPACK_ARR16;
-            const     uint16_t size16 = host_to_b16(static_cast<uint16_t>(size));
-            out((const char*)&format, 1);
-            out((const char*)&size16, 2);
+            char buf[3];
+            buf[0] = MSGPACK_ARR16;
+            store(&buf[1], host_to_b16(static_cast<uint16_t>(size)));
+            out(buf, sizeof(buf));
         }
         else 
         {
-            constexpr uint8_t  format = MSGPACK_ARR32;
-            const     uint32_t size32 = host_to_b32(static_cast<uint32_t>(size));
-            out((const char*)&format, 1);
-            out((const char*)&size32, 4);
+            char buf[5];
+            buf[0] = MSGPACK_ARR32;
+            store(&buf[1], host_to_b32(static_cast<uint32_t>(size)));
+            out(buf, sizeof(buf));
         }
     }
 
@@ -1110,17 +1116,17 @@ namespace msgpackcpp
         }
         else if (size < 65536)
         {
-            constexpr uint8_t  format = MSGPACK_MAP16;
-            const     uint16_t size16 = host_to_b16(static_cast<uint16_t>(size));
-            out((const char*)&format, 1);
-            out((const char*)&size16, 2);
+            char buf[3];
+            buf[0] = MSGPACK_MAP16;
+            store(&buf[1], host_to_b16(static_cast<uint16_t>(size)));
+            out(buf, sizeof(buf));
         }
         else 
         {
-            constexpr uint8_t  format = MSGPACK_MAP32;
-            const     uint32_t size32 = host_to_b32(static_cast<uint32_t>(size));
-            out((const char*)&format, 1);
-            out((const char*)&size32, 4);
+            char buf[5];
+            buf[0] = MSGPACK_MAP32;
+            store(&buf[1], host_to_b32(static_cast<uint32_t>(size)));
+            out(buf, sizeof(buf));
         }
     }
 

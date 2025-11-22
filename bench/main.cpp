@@ -1,6 +1,7 @@
 #include <chrono>
 #include <random>
 #include <boost/describe/class.hpp>
+#include <msgpack.hpp>
 #define ANKERL_NANOBENCH_IMPLEMENT
 #include "nanobench.h"
 #include "msgpack.h"
@@ -41,6 +42,40 @@ std::string make_string()
             "importance.";
 }
 
+template<class Byte, class Allocator>
+struct vector_sink
+{
+    std::vector<Byte, Allocator>& buf;
+    vector_sink(std::vector<Byte, Allocator>& buf_) : buf{buf_} {}
+    void write(const char* data, size_t len) {buf.insert(end(buf), data, data + len);}
+};
+
+template <
+    class T,
+    class D1 = boost::describe::describe_members<T, boost::describe::mod_any_access>
+>
+void serialize_msgpack_cxx(std::vector<uint8_t>& buf, const T& obj, bool as_map = false)
+{ 
+    vector_sink out{buf};
+    msgpack::packer pack{&out};
+
+    if (as_map)
+    {
+        pack.pack_map(boost::mp11::mp_size<D1>::value);
+        boost::mp11::mp_for_each<D1>([&](auto D) {
+            pack.pack(D.name);
+            pack.pack(obj.*D.pointer);
+        });
+    }
+    else
+    {
+        pack.pack_array(boost::mp11::mp_size<D1>::value);
+        boost::mp11::mp_for_each<D1>([&](auto D) {
+            pack.pack(obj.*D.pointer);
+        });
+    }
+}
+
 namespace custom_namespace
 {
     struct custom_struct
@@ -63,6 +98,15 @@ namespace custom_namespace
         c, i8, u8, i16, u16, i32, u32, i64, u64, f32, f64,
         str
     ))
+
+    struct custom_struct2
+    {
+        std::vector<custom_struct>      array;
+        std::map<int, custom_struct>    map;
+        std::vector<uint8_t>            binary;
+    };
+
+    BOOST_DESCRIBE_STRUCT(custom_struct2, (), (array, map, binary))
 }
 
 int main()
@@ -82,11 +126,26 @@ int main()
     data.f32    = random<float>(eng);
     data.f64    = random<double>(eng);
     data.str    = make_string();
-    std::vector<uint8_t> buf;
 
-    ankerl::nanobench::Bench().minEpochTime(100ms).maxEpochTime(1s).run("serialize", [&] {
-        auto out = sink(buf);
+    // Warmup
+    std::vector<uint8_t> buf0;
+    auto out = sink(buf0);
+    serialize(out, data);
+
+    std::vector<uint8_t> buf1;
+    serialize_msgpack_cxx(buf1, data);
+    printf("buf0.size() %zu buf1.size() %zu\n", buf0.size(), buf1.size());
+
+    ankerl::nanobench::Bench().minEpochTime(100ms).epochs(50).run("msgpackcpp::serialize", [&] {
+        buf0.clear();
+        auto out = sink(buf0);
         serialize(out, data);
         // ankerl::nanobench::doNotOptimizeAway(d);
     });
+
+    ankerl::nanobench::Bench().minEpochTime(100ms).epochs(50).run("msgpack_c::serialize", [&] {
+        buf1.clear();
+        serialize_msgpack_cxx(buf1, data);
+        // ankerl::nanobench::doNotOptimizeAway(d);
+    });    
 }

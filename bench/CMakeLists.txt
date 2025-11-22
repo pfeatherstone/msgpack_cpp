@@ -15,7 +15,13 @@ FetchContent_Declare(
   URL_HASH MD5=537da0e22b31b8b7185cc44fdde70458
   DOWNLOAD_EXTRACT_TIMESTAMP true
 )
-FetchContent_MakeAvailable(Boost)
+set(MSGPACK_USE_BOOST OFF CACHE INTERNAL "Disabling boost in msgpack library")
+FetchContent_Declare(
+  msgpack
+  GIT_REPOSITORY https://github.com/msgpack/msgpack-c.git
+  GIT_TAG        cpp_master
+)
+FetchContent_MakeAvailable(Boost msgpack)
 
 # Examples
 add_executable(Bench main.cpp)
@@ -23,4 +29,4 @@ target_include_directories(Bench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 target_compile_features(Bench PRIVATE cxx_std_17)
 target_compile_options(Bench PRIVATE $<${IS_NOT_MSVC}:-Wall -Wextra -Werror>)
 target_link_options(Bench PRIVATE $<$<AND:$<CONFIG:RELEASE>,${IS_NOT_MSVC}>:-s>)
-target_link_libraries(Bench PRIVATE Boost::describe)
+target_link_libraries(Bench PRIVATE Boost::describe msgpack-cxx)
