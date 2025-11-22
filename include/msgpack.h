@@ -668,7 +668,7 @@ namespace msgpackcpp
             // negative - int16
             char buf[3];
             buf[0] = MSGPACK_I16;
-            store(&buf[1], host_to_b16(bit_cast<uint16_t>(static_cast<int16_t>(v))));
+            store(&buf[1], host_to_b16(static_cast<int16_t>(v)));
             out(buf, sizeof(buf));
         }    
         else if (v >= std::numeric_limits<int32_t>::min())
@@ -676,7 +676,7 @@ namespace msgpackcpp
             // negative - int32_t
             char buf[5];
             buf[0] = MSGPACK_I32;
-            store(&buf[1], host_to_b32(bit_cast<uint32_t>(static_cast<int32_t>(v))));
+            store(&buf[1], host_to_b32(static_cast<int32_t>(v)));
             out(buf, sizeof(buf));
         }
         else
@@ -684,7 +684,7 @@ namespace msgpackcpp
             // negative - int64_t
             char buf[9];
             buf[0] = MSGPACK_I64;
-            store(&buf[1], host_to_b64(bit_cast<uint64_t>(static_cast<int64_t>(v))));
+            store(&buf[1], host_to_b64(static_cast<int64_t>(v)));
             out(buf, sizeof(buf));
         }
     }
